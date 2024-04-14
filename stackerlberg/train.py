@@ -3,7 +3,6 @@ import numpy as np
 
 from envs.matrix_game import IteratedMatrixGame
 from wrappers.follower import FollowerWrapper
-from ppo import PPOLeaderFollower
 
 
 def pretrain(matrix: Union[np.ndarray, str]):
@@ -13,7 +12,4 @@ def pretrain(matrix: Union[np.ndarray, str]):
         env = FollowerWrapper(env, num_queries=5, leader_response=random_leader_responses)
 
 if __name__ == "__main__":
-    env = IteratedMatrixGame(matrix="prisoners_dilemma", episode_length=10, memory=2)
-    env = FollowerWrapper(env=env, num_queries=5)
-    learner = PPOLeaderFollower(env=env)
-    learner.pretraining(iterations=10000)
+    pretrain("prisoners_dilemma")
