@@ -10,6 +10,13 @@
             "request": "launch",
             "program": "${workspaceFolder}/stackerlberg/train.py",
             "console": "integratedTerminal",
+        },
+        {
+            "name": "Testing",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/stackerlberg/test.py",
+            "console": "integratedTerminal",
         }
 
     ]

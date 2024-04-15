@@ -32,17 +32,18 @@ class PPOLeaderFollower:
                     config={"pretraining_actor_lr": self.training_actor_lr, 
                     "pretraining_critic_lr": self.training_critic_lr},
                     )
+        self.random_policy = lambda obs : torch.tensor([0 for s in obs],dtype=torch.int).squeeze()
 
     def _init_hyperparameters(self):
         self.n_eps_per_batch = 3
-        self.eps_length = 20
         self.n_iter_per_update = 5
+        self.n_critic_update_per_actor_update = 100
         self.gamma = 0.95
         self.clip = 0.2
-        self.pretraining_actor_lr = 0.1
-        self.pretraining_critic_lr = 0.1
-        self.training_actor_lr = 0.1
-        self.training_critic_lr = 0.1
+        self.pretraining_actor_lr = 5e-3
+        self.pretraining_critic_lr = 5e-3
+        self.training_actor_lr = 5e-3
+        self.training_critic_lr = 5e-3
 
     def sample_leader_policy(self):
         actor_leader = copy.deepcopy(self.leader_actor)
@@ -51,8 +52,8 @@ class PPOLeaderFollower:
     
     def get_actions(self, actor: Actor, obs):
         logits = actor(obs).detach().cpu()
-        action = np.argmax(logits)
-        log_prob = np.log(logits[action])
+        action = torch.argmax(logits)
+        log_prob = torch.log(logits[action])
 
         return action, log_prob
     
@@ -69,7 +70,7 @@ class PPOLeaderFollower:
         V = critic(batch_obs).squeeze()
         logits = actor(batch_obs)
         log_probs = []
-        for k in range(self.n_eps_per_batch * self.eps_length):
+        for k in range(batch_obs.shape[0]):
             log_probs.append(logits[k][int(batch_act[k].item())])
         log_probs = torch.stack(log_probs)
 
@@ -86,24 +87,26 @@ class PPOLeaderFollower:
         critic_optim = torch.optim.AdamW(self.follower_critic.parameters(),lr=self.pretraining_critic_lr)
 
         for iter in range(iterations):
+            print(iter)
             batch_obs = {"leader": [], "follower": []}
             batch_act = {"leader": [], "follower": []}
             batch_log_probs = {"leader": [], "follower": []}
             batch_returns = {"leader": [], "follower": []}
             for eps in range(self.n_eps_per_batch):
 
-                random_leader_policy = self.sample_leader_policy()
-                random_leader_responses = torch.argmax(random_leader_policy(INIT_LEADER_OBS),dim=-1).to(torch.float)
+                # random_leader_policy = self.sample_leader_policy()
+                # random_leader_responses = torch.argmax(random_leader_policy(INIT_LEADER_OBS),dim=-1).to(torch.float)
+                random_leader_responses = self.random_policy(obs=INIT_LEADER_OBS)
                 self.env.set_leader_response(random_leader_responses)
                     
                 rewards_per_eps = {"leader": [], "follower": []}
                 obs = self.env.reset()
 
-                for k in range(self.eps_length):
+                while True:
                     actions, log_probs = {}, {}
-                    actions["leader"], log_probs["leader"] = self.get_actions(actor=self.leader_actor, obs=obs["leader"])
+                    actions["leader"], log_probs["leader"] = self.random_policy(obs=torch.tensor([obs["leader"]])), -1
                     actions["follower"], log_probs["follower"] = self.get_actions(actor=self.follower_actor, obs=obs["follower"])
-                    obs, rewards, terminated, truncated, infos = self.env.step(actions=actions)
+                    obs, rewards, terminated, _, _ = self.env.step(actions=actions)
                     
                     for agent in AGENTS:
                         batch_obs[agent].append(obs[agent])
@@ -111,22 +114,25 @@ class PPOLeaderFollower:
                         batch_log_probs[agent].append(log_probs[agent])
                         rewards_per_eps[agent].append(rewards[agent])
 
-                    # why terminated here at 1st step?
-                    # if terminated:
-                    #     break
+                    if terminated["leader"] or terminated["follower"]:
+                        break
 
-                del random_leader_policy
+                # del random_leader_policy
                 
                 for agent in AGENTS:
                     batch_returns[agent] += self.compute_returns(rewards_per_eps[agent])
 
+            mean_return_sum_per_episode = {}
             for agent in AGENTS:
                 batch_obs[agent] = torch.tensor(batch_obs[agent], dtype=torch.float)
                 batch_act[agent] = torch.tensor(batch_act[agent], dtype=torch.float)
                 batch_log_probs[agent] = torch.tensor(batch_log_probs[agent], dtype=torch.float)
                 batch_returns[agent] = torch.tensor(batch_returns[agent], dtype=torch.float)
+                mean_return_sum_per_episode[agent] = torch.sum(batch_returns[agent]) / self.n_eps_per_batch
+            
+            wandb.log({"leader return" : mean_return_sum_per_episode["leader"], "follower return" : mean_return_sum_per_episode["follower"]})
 
-            for j in range(self.n_iter_per_update):
+            for _ in range(self.n_iter_per_update):
             
                 V, curr_log_probs = self.evaluate(actor=self.follower_actor, critic=self.follower_critic,
                                                            batch_obs=batch_obs["follower"], batch_act=batch_act["follower"])
@@ -140,14 +146,18 @@ class PPOLeaderFollower:
                 surr2 = torch.clamp(ratios, 1 - self.clip, 1 + self.clip) * adv
 
                 actor_loss = (-torch.min(surr1, surr2)).mean()
-                critic_loss = F.mse_loss(batch_returns["follower"], V)
-            
                 actor_optim.zero_grad()
                 actor_loss.backward(retain_graph=True)
                 actor_optim.step()
 
-                critic_optim.zero_grad()
-                critic_loss.backward()
-                critic_optim.step()
+                for _ in range(self.n_critic_update_per_actor_update):
+                    V, _ = self.evaluate(actor=self.follower_actor, critic=self.follower_critic,
+                                                           batch_obs=batch_obs["follower"], batch_act=batch_act["follower"])
+                    critic_loss = F.mse_loss(batch_returns["follower"], V)
+                    critic_optim.zero_grad()
+                    critic_loss.backward()
+                    critic_optim.step()
+                    # print(critic_loss)
+                    wandb.log({"critic loss": critic_loss})
 
-                wandb.log({"actor loss": actor_loss, "critic_loss": critic_loss})
+                wandb.log({"actor loss": actor_loss})
