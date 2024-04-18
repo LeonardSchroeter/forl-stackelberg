@@ -1,8 +1,6 @@
 import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from typing import List
-
 from pettingzoo.utils.wrappers import BaseParallelWrapper
 from gymnasium import spaces
 
@@ -10,15 +8,16 @@ from envs.matrix_game import IteratedMatrixGame
 
 
 class FollowerWrapper(BaseParallelWrapper):
-    def __init__(self, env, num_queries: int, leader_response: List):
-        if num_queries <= 0:
-            raise ValueError("num_queries must be greater than 0")
+    def __init__(self, env, num_queries: int, leader_response: list | None = None):
+        assert num_queries > 0, "num_queries must be greater than 0"
+        assert leader_response is None or num_queries == len(leader_response), "num_queries must be equal to the length of leader_response"
         
-        if num_queries != len(leader_response):
-            raise ValueError("num_queries must be equal to the length of leader_response")
-
         super().__init__(env)
         self.num_queries = num_queries
+        self.leader_response = leader_response
+
+    def set_leader_response(self, leader_response: list):
+        assert len(leader_response) == self.num_queries, "leader_response must be equal to the number of queries"
         self.leader_response = leader_response
 
     def observation_space(self, agent: str) -> spaces.Space:
