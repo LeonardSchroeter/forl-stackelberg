@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+import torch.distributions as td
 import numpy as np
 import copy
 
@@ -11,7 +12,7 @@ from model import Actor, Critic
 from wrappers.follower import FollowerWrapper 
 
 AGENTS = ["leader", "follower"]
-INIT_LEADER_OBS = torch.tensor([[1],[2],[3],[4],[5]], dtype=torch.float)
+INIT_LEADER_OBS = torch.tensor([[0],[1],[2],[3],[4]], dtype=torch.float)
 
 class PPOLeaderFollower:
 
@@ -32,7 +33,7 @@ class PPOLeaderFollower:
                     config={"pretraining_actor_lr": self.training_actor_lr, 
                     "pretraining_critic_lr": self.training_critic_lr},
                     )
-        self.random_policy = lambda obs : torch.tensor([0 for s in obs],dtype=torch.int).squeeze()
+        self.test_fixed_policy = lambda obs : torch.tensor([1 for s in obs],dtype=torch.int).squeeze()
 
     def _init_hyperparameters(self):
         self.n_eps_per_batch = 3
@@ -52,8 +53,9 @@ class PPOLeaderFollower:
     
     def get_actions(self, actor: Actor, obs):
         logits = actor(obs).detach().cpu()
-        action = torch.argmax(logits)
-        log_prob = torch.log(logits[action])
+        dist = td.Categorical(logits=logits)
+        action = dist.sample() 
+        log_prob = dist.log_prob(action)
 
         return action, log_prob
     
@@ -61,7 +63,7 @@ class PPOLeaderFollower:
         returns = []
         discounted_rewards = 0
         for reward in reversed(rewards):
-            discounted_rewards += reward + self.gamma * discounted_rewards
+            discounted_rewards = reward + self.gamma * discounted_rewards
             returns.insert(0, discounted_rewards)
 
         return returns
@@ -96,7 +98,7 @@ class PPOLeaderFollower:
 
                 # random_leader_policy = self.sample_leader_policy()
                 # random_leader_responses = torch.argmax(random_leader_policy(INIT_LEADER_OBS),dim=-1).to(torch.float)
-                random_leader_responses = self.random_policy(obs=INIT_LEADER_OBS)
+                random_leader_responses = self.test_fixed_policy(obs=INIT_LEADER_OBS)
                 self.env.set_leader_response(random_leader_responses)
                     
                 rewards_per_eps = {"leader": [], "follower": []}
@@ -104,9 +106,10 @@ class PPOLeaderFollower:
 
                 while True:
                     actions, log_probs = {}, {}
-                    actions["leader"], log_probs["leader"] = self.random_policy(obs=torch.tensor([obs["leader"]])), -1
+                    actions["leader"], log_probs["leader"] = self.test_fixed_policy(obs=torch.tensor([obs["leader"]])), -1
                     actions["follower"], log_probs["follower"] = self.get_actions(actor=self.follower_actor, obs=obs["follower"])
                     obs, rewards, terminated, _, _ = self.env.step(actions=actions)
+                    print(actions, rewards)
                     
                     for agent in AGENTS:
                         batch_obs[agent].append(obs[agent])
@@ -127,18 +130,19 @@ class PPOLeaderFollower:
                 batch_obs[agent] = torch.tensor(batch_obs[agent], dtype=torch.float)
                 batch_act[agent] = torch.tensor(batch_act[agent], dtype=torch.float)
                 batch_log_probs[agent] = torch.tensor(batch_log_probs[agent], dtype=torch.float)
-                batch_returns[agent] = torch.tensor(batch_returns[agent], dtype=torch.float)
+                batch_returns[agent] = torch.tensor(batch_returns[agent], dtype=torch.float, requires_grad=True)
                 mean_return_sum_per_episode[agent] = torch.sum(batch_returns[agent]) / self.n_eps_per_batch
             
-            wandb.log({"leader return" : mean_return_sum_per_episode["leader"], "follower return" : mean_return_sum_per_episode["follower"]})
+            wandb.log({"follower return" : mean_return_sum_per_episode["follower"]})
 
             for _ in range(self.n_iter_per_update):
             
                 V, curr_log_probs = self.evaluate(actor=self.follower_actor, critic=self.follower_critic,
                                                            batch_obs=batch_obs["follower"], batch_act=batch_act["follower"])
-                adv = batch_returns["follower"] - V
+                adv = batch_returns["follower"] - V.detach()
                 
                 adv = (adv - adv.mean()) / (adv.std() + 1e-10)
+                # batch_returns["follower"] = (batch_returns["follower"] - batch_returns["follower"].mean()) / (batch_returns["follower"].std() + 1e-10)
 
                 ratios = torch.exp(curr_log_probs - batch_log_probs["follower"])
 
@@ -146,14 +150,17 @@ class PPOLeaderFollower:
                 surr2 = torch.clamp(ratios, 1 - self.clip, 1 + self.clip) * adv
 
                 actor_loss = (-torch.min(surr1, surr2)).mean()
+                # actor_loss = -batch_returns["follower"].mean()
                 actor_optim.zero_grad()
                 actor_loss.backward(retain_graph=True)
                 actor_optim.step()
 
+                print(actor_loss)
+
                 for _ in range(self.n_critic_update_per_actor_update):
                     V, _ = self.evaluate(actor=self.follower_actor, critic=self.follower_critic,
                                                            batch_obs=batch_obs["follower"], batch_act=batch_act["follower"])
-                    critic_loss = F.mse_loss(batch_returns["follower"], V)
+                    critic_loss = F.mse_loss(V, batch_returns["follower"])
                     critic_optim.zero_grad()
                     critic_loss.backward()
                     critic_optim.step()

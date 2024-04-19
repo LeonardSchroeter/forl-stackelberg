@@ -21,7 +21,7 @@ def test_pretraining():
         actions = {}
         actions["leader"] = learner.random_policy(obs=torch.tensor([obs["leader"]]))
         actions["follower"], _ = learner.get_actions(actor=learner.follower_actor, obs=obs["follower"])
-        print(actions["follower"])
+        # print(actions["follower"])
         obs, rewards, _, _, _ = env.step(actions)
 
 if __name__ == "__main__":
