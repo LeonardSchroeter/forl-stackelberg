@@ -18,7 +18,7 @@ class FollowerWrapper(BaseParallelWrapper):
 
         super().__init__(env)
         self.env = env
-        self.num_queries = num_queries
+        self.num_queries = num_queries 
 
     def set_leader_response(self, leader_response):
         if self.num_queries != len(leader_response):

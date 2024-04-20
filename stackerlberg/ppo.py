@@ -41,7 +41,7 @@ class PPOLeaderFollower:
         self.n_critic_update_per_actor_update = 100
         self.gamma = 0.95
         self.clip = 0.2
-        self.pretraining_actor_lr = 5e-3
+        self.pretraining_actor_lr = 0.1
         self.pretraining_critic_lr = 5e-3
         self.training_actor_lr = 5e-3
         self.training_critic_lr = 5e-3
@@ -52,7 +52,7 @@ class PPOLeaderFollower:
         return actor_leader
     
     def get_actions(self, actor: Actor, obs):
-        logits = actor(obs).detach().cpu()
+        logits = actor(obs)
         dist = td.Categorical(logits=logits)
         action = dist.sample() 
         log_prob = dist.log_prob(action)
@@ -123,7 +123,9 @@ class PPOLeaderFollower:
                 # del random_leader_policy
                 
                 for agent in AGENTS:
-                    batch_returns[agent] += self.compute_returns(rewards_per_eps[agent])
+                    # batch_returns[agent] += self.compute_returns(rewards_per_eps[agent])
+                    return_per_episode = self.compute_returns(rewards_per_eps[agent])[0]
+                    batch_returns[agent] += [return_per_episode for _ in range(self.env.episode_length)]
 
             mean_return_sum_per_episode = {}
             for agent in AGENTS:
@@ -135,36 +137,14 @@ class PPOLeaderFollower:
             
             wandb.log({"follower return" : mean_return_sum_per_episode["follower"]})
 
-            for _ in range(self.n_iter_per_update):
-            
-                V, curr_log_probs = self.evaluate(actor=self.follower_actor, critic=self.follower_critic,
-                                                           batch_obs=batch_obs["follower"], batch_act=batch_act["follower"])
-                adv = batch_returns["follower"] - V.detach()
+            # for _ in range(self.n_iter_per_update):
                 
-                adv = (adv - adv.mean()) / (adv.std() + 1e-10)
-                # batch_returns["follower"] = (batch_returns["follower"] - batch_returns["follower"].mean()) / (batch_returns["follower"].std() + 1e-10)
+            actor_loss = -(batch_log_probs["follower"] * batch_returns["follower"]).mean()
+            # batch_returns["follower"] = (batch_returns["follower"] - batch_returns["follower"].mean()) / (batch_returns["follower"].std() + 1e-10)
 
-                ratios = torch.exp(curr_log_probs - batch_log_probs["follower"])
+            # actor_loss = -batch_returns["follower"].mean()
+            actor_optim.zero_grad()
+            actor_loss.backward(retain_graph=True)
+            actor_optim.step()
 
-                surr1 = ratios * adv
-                surr2 = torch.clamp(ratios, 1 - self.clip, 1 + self.clip) * adv
-
-                actor_loss = (-torch.min(surr1, surr2)).mean()
-                # actor_loss = -batch_returns["follower"].mean()
-                actor_optim.zero_grad()
-                actor_loss.backward(retain_graph=True)
-                actor_optim.step()
-
-                print(actor_loss)
-
-                for _ in range(self.n_critic_update_per_actor_update):
-                    V, _ = self.evaluate(actor=self.follower_actor, critic=self.follower_critic,
-                                                           batch_obs=batch_obs["follower"], batch_act=batch_act["follower"])
-                    critic_loss = F.mse_loss(V, batch_returns["follower"])
-                    critic_optim.zero_grad()
-                    critic_loss.backward()
-                    critic_optim.step()
-                    # print(critic_loss)
-                    wandb.log({"critic loss": critic_loss})
-
-                wandb.log({"actor loss": actor_loss})
+            wandb.log({"actor loss": actor_loss})

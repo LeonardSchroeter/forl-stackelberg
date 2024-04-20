@@ -17,6 +17,13 @@
             "request": "launch",
             "program": "${workspaceFolder}/stackerlberg/test.py",
             "console": "integratedTerminal",
+        },
+        {
+            "name": "Ref",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/stackerlberg/vanilla_policy_gradient.py",
+            "console": "integratedTerminal",
         }
 
     ]
