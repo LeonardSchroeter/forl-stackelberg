@@ -8,7 +8,7 @@
             "name": "Pretraining",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/stackerlberg/train.py",
+            "program": "${workspaceFolder}/stackerlberg/pretrain.py",
             "console": "integratedTerminal",
         },
         // {
