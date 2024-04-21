@@ -71,22 +71,17 @@ class PPOLeaderFollower:
     def evaluate(self, actor: Actor, critic: Critic, batch_obs: torch.Tensor, batch_act: torch.Tensor):
         V = critic(batch_obs).squeeze()
         logits = actor(batch_obs)
+        dist = td.Categorical(logits=logits)
         log_probs = []
         for k in range(batch_obs.shape[0]):
-            log_probs.append(logits[k][int(batch_act[k].item())])
+            log_probs.append(dist.log_prob(batch_act[k]))
         log_probs = torch.stack(log_probs)
 
         return V, log_probs
     
-    # def follower_observation(self, obs_dict: Dict):
-    #     obs = obs_dict["follower"]["queries"].tolist()
-    #     obs.insert(0, obs_dict["follower"]["original"])
-    #     return torch.tensor(obs, dtype=torch.float)
-    
     def pretraining(self, iterations):
 
-        actor_optim = torch.optim.AdamW(self.follower_actor.parameters(),lr=self.pretraining_actor_lr)
-        critic_optim = torch.optim.AdamW(self.follower_critic.parameters(),lr=self.pretraining_critic_lr)
+        actor_optim = torch.optim.AdamW(self.follower_actor.parameters(),lr=self.pretraining_actor_lr)  
 
         for iter in range(iterations):
             print(iter)

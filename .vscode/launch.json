@@ -5,26 +5,26 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Training",
+            "name": "Pretraining",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/stackerlberg/train.py",
             "console": "integratedTerminal",
         },
-        {
-            "name": "Testing",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/stackerlberg/test.py",
-            "console": "integratedTerminal",
-        },
-        {
-            "name": "Ref",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/stackerlberg/vanilla_policy_gradient.py",
-            "console": "integratedTerminal",
-        }
+        // {
+        //     "name": "Testing",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "program": "${workspaceFolder}/stackerlberg/test.py",
+        //     "console": "integratedTerminal",
+        // },
+        // {
+        //     "name": "Ref",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "program": "${workspaceFolder}/stackerlberg/vanilla_policy_gradient.py",
+        //     "console": "integratedTerminal",
+        // }
 
     ]
 }

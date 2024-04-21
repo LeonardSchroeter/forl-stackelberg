@@ -53,7 +53,7 @@ class FollowerWrapper(BaseParallelWrapper):
     def step(self, actions):
         obs, rewards, terminated, truncated, infos = self.env.step(actions)
         # obs["follower"] = {"original": obs["follower"], "queries": self.leader_response}
-        obs["leader"] = obs["leader"].item()
+        # obs["leader"] = obs["leader"].item()
         obs_follower = self.leader_response.tolist()
         obs_follower.insert(0, obs["follower"])
         obs["follower"] = np.array(obs_follower, dtype=np.float64)
