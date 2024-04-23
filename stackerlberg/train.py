@@ -1,148 +1,145 @@
 from typing import Union, Literal
 import numpy as np
+import matplotlib.pyplot as plt
 
 from envs.matrix_game import IteratedMatrixGame
 from wrappers.follower import FollowerWrapper
+from algorithms.tabular_q import TabularQ
 
 
-class TabularQ:
+class Train:
     def __init__(self, env):
         self.env = env
-        self.follower_q_table = {}
 
-        for i in range(5):
-            for j in range(32):
-                j_bits = (int(x) for x in list(np.binary_repr(j, width=5)))
-                self.follower_q_table[(i, tuple(j_bits))] = np.zeros(self.env.action_space("follower").n)
+        def hashify_follower(obs):
+            return (tuple(obs["queries"]), obs["original"])
 
-        self.leader_q_table = {}
-
-        for i in range(5):
-            self.leader_q_table[i] = np.zeros(self.env.action_space("leader").n)
+        self.follower_q = TabularQ(
+            env.action_space("follower").n, hashify=hashify_follower
+        )
+        self.leader_q = TabularQ(env.action_space("leader").n)
 
         self.init_hyperparameters()
 
     def init_hyperparameters(self):
-        self.n_episodes = 10000
-        self.temperature = 1.0
-        self.gamma = 0.95
-        self.alpha = 0.1
+        self.leader_n_episodes = 10000
+        self.follower_n_episodes = 10000
 
-    def hashify_follower(self, obs):
-        return (obs["follower"]["original"], tuple(obs["follower"]["queries"]))
-
-    def get_follower_action(self, obs, type: Literal["greedy", "softmax"] = "greedy"):
-        obs_key = self.hashify_follower(obs)
-        q_values = self.follower_q_table[obs_key]
-
-        if type == "greedy":
-            return np.argmax(q_values)
-        
-        q_values = np.exp(q_values / self.temperature)
-        q_values = q_values / np.sum(q_values)
-        return np.random.choice(self.env.action_space("follower").n, p=q_values)
-
-    def get_leader_action(self, obs, type: Literal["greedy", "softmax"] = "greedy"):
-        obs_key = obs["leader"]
-        q_values = self.leader_q_table[obs_key]
-
-        if type == "greedy":
-            return np.argmax(q_values)
-        
-        q_values = np.exp(q_values / self.temperature)
-        q_values = q_values / np.sum(q_values)
-        return np.random.choice(self.env.action_space("leader").n, p=q_values)
-
-    def pretrain(self):
-        for episode in range(self.n_episodes):
-            random_deterministic_leader_policy = np.array([self.env.action_space("leader").sample() for _ in range(self.env.observation_space("leader").n)])
-            self.env.set_leader_response(random_deterministic_leader_policy)
+    def train_follower(self):
+        for episode in range(self.follower_n_episodes):
+            random_leader_policy = [
+                self.env.action_space("leader").sample()
+                for _ in range(self.env.observation_space("leader").n)
+            ]
+            self.env.set_leader_response(random_leader_policy)
 
             obs = self.env.reset()
 
             while True:
-                leader_action = random_deterministic_leader_policy[obs["leader"]]
+                leader_action = random_leader_policy[obs["leader"]]
                 follower_action = self.env.action_space("follower").sample()
 
-                actions = {
-                    "leader": leader_action,
-                    "follower": follower_action
-                }
+                actions = {"leader": leader_action, "follower": follower_action}
 
                 new_obs, rewards, terminated, truncated, _ = self.env.step(actions)
 
-                obs_key = self.hashify_follower(obs)
-                new_obs_key = self.hashify_follower(new_obs)
-                
-                self.follower_q_table[obs_key][follower_action] = (1 - self.alpha) * self.follower_q_table[obs_key][follower_action] + self.alpha * (rewards["follower"] + self.gamma * np.max(self.follower_q_table[new_obs_key]))
+                self.follower_q.update_q(
+                    obs["follower"],
+                    follower_action,
+                    rewards["follower"],
+                    new_obs["follower"],
+                )
 
                 if all(terminated.values()) or all(truncated.values()):
                     break
 
                 obs = new_obs
 
-    def train(self):
-        queries = [0, 1, 2, 3, 4]
-        for episode in range(self.n_episodes * 10):
-            memory = []
+    def train_leader(self):
+        returns_per_episode = {"leader": [], "follower": []}
 
-            query_answers = [self.get_leader_action({"leader": q}, type="softmax") for q in queries]
-            if episode % 1000 == 0:
-                print(f"Episode {episode}, query answers: {query_answers}")
+        for episode in range(self.leader_n_episodes):
+            returns = self.evaluate()
+            returns_per_episode["leader"].append(returns["leader"])
+            returns_per_episode["follower"].append(returns["follower"])
 
-            self.env.set_leader_response(query_answers)
+            leader_policy = [
+                self.leader_q.get_action(q, type="epsilon-greedy") for q in range(5)
+            ]
+            self.env.set_leader_response(leader_policy)
 
-            for s, a in zip(queries, query_answers):
-                memory.append((
-                    {"leader": s},
-                    {"leader": a},
-                    {"leader": 0}
-                ))
+            leader_memory = []
+            for s, a in zip(list(range(5)), leader_policy):
+                leader_memory.append((s, a, 0))
 
             obs = self.env.reset()
 
             while True:
-                leader_action = query_answers[obs["leader"]]
-                follower_action = self.get_follower_action(obs)
+                leader_action = leader_policy[obs["leader"]]
+                follower_action = self.follower_q.get_action(obs["follower"])
 
-                actions = {
-                    "leader": leader_action,
-                    "follower": follower_action
-                }
+                actions = {"leader": leader_action, "follower": follower_action}
 
                 new_obs, rewards, terminated, truncated, _ = self.env.step(actions)
 
-                memory.append((obs, actions, rewards))
+                leader_memory.append((obs["leader"], leader_action, rewards["leader"]))
 
                 if all(terminated.values()) or all(truncated.values()):
                     break
 
                 obs = new_obs
 
-            for i in range(len(memory) - 1):
-                obs, actions, rewards = memory[i]
-                next_obs, _, _ = memory[i + 1]
+            leader_quadruples = [
+                (state, action, reward, next_state)
+                for (state, action, reward), (next_state, _, _) in zip(
+                    leader_memory, leader_memory[1:]
+                )
+            ]
 
-                self.leader_q_table[obs["leader"]][actions["leader"]] = (1 - self.alpha) * self.leader_q_table[obs["leader"]][actions["leader"]] + self.alpha * (rewards["leader"] + self.gamma * np.max(self.leader_q_table[next_obs["leader"]]))
+            self.leader_q.update_q_batch(leader_quadruples)
+
+        return returns_per_episode
+
+    # Play one episode of the game using deterministic leader and follower policies
+    def evaluate(self):
+        leader_policy = [self.leader_q.get_action(q, type="greedy") for q in range(5)]
+
+        self.env.set_leader_response(leader_policy)
+        obs = self.env.reset()
+
+        returns = {"leader": 0, "follower": 0}
+
+        while True:
+            leader_action = leader_policy[obs["leader"]]
+            follower_action = self.follower_q.get_action(obs["follower"], type="greedy")
+
+            actions = {"leader": leader_action, "follower": follower_action}
+
+            obs, rewards, terminated, truncated, _ = self.env.step(actions)
+
+            returns["leader"] += rewards["leader"] - self.env.reward_offset
+            returns["follower"] += rewards["follower"] - self.env.reward_offset
+
+            if all(terminated.values()) or all(truncated.values()):
+                break
+
+        return returns
+
 
 if __name__ == "__main__":
-    env = FollowerWrapper(IteratedMatrixGame(matrix="prisoners_dilemma", episode_length=10, memory=2), num_queries=5)
-    q = TabularQ(env)
-    q.pretrain()
+    env = FollowerWrapper(
+        IteratedMatrixGame(matrix="prisoners_dilemma", episode_length=10, memory=2),
+        num_queries=5,
+    )
+    q = Train(env)
+    q.train_follower()
     print("Pretraining done")
-    """
-    for j in range(32):
-        for i in range(5):
-            j_bits = tuple(int(x) for x in list(np.binary_repr(j, width=5)))
-            print(f"State: {i}, {j_bits}")
-            print("Action values:", q.follower_q_table[(i, j_bits)])
-            print("Chosen action:", q.get_follower_action({"follower": {"original": i, "queries": list(j_bits)}}))
-    """
-    q.train()
+    returns = q.train_leader()
     print("Training done")
+    q.follower_q.print_policy()
+    print(np.mean(returns["leader"]))
 
-
-    for i in range(5):
-        print(f"State: {i}")
-        print("Action values:", q.leader_q_table[i])
-        print("Chosen action:", q.get_leader_action({"leader": i}))
+    plt.plot(returns["leader"], label="Leader")
+    # plt.plot(returns["follower"], label="Follower")
+    plt.legend()
+    plt.show()
