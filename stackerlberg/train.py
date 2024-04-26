@@ -1,4 +1,3 @@
-from typing import Union, Literal
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -8,21 +7,26 @@ from algorithms.tabular_q import TabularQ
 
 
 class Train:
-    def __init__(self, env):
+    def __init__(self, env, config=None):
         self.env = env
 
         def hashify_follower(obs):
             return (tuple(obs["queries"]), obs["original"])
 
+        follower_config = config["follower"] if config else None
+        leader_config = config["leader"] if config else None
+
         self.follower_q = TabularQ(
-            env.action_space("follower").n, hashify=hashify_follower
+            env.action_space("follower").n,
+            hashify=hashify_follower,
+            config=follower_config,
         )
-        self.leader_q = TabularQ(env.action_space("leader").n)
+        self.leader_q = TabularQ(env.action_space("leader").n, config=leader_config)
 
         self.init_hyperparameters()
 
     def init_hyperparameters(self):
-        self.leader_n_episodes = 10000
+        self.leader_n_episodes = 1000
         self.follower_n_episodes = 10000
 
     def train_follower(self):
@@ -126,12 +130,32 @@ class Train:
         return returns
 
 
+good_config = {
+    "follower": {
+        "gamma": 0.8684315545335111,
+        "alpha": 0.03649832336047994,
+        "epsilon": 0.14626571202090557,
+        "temperature": 1,
+    },
+    "leader": {
+        "gamma": 0.8298757842998368,
+        "alpha": 0.01903609628539893,
+        "epsilon": 0.038605496690605694,
+        "temperature": 1,
+    },
+}
+
+
 if __name__ == "__main__":
+    import time
+
+    np.random.seed(int(time.time()))
+
     env = FollowerWrapper(
         IteratedMatrixGame(matrix="prisoners_dilemma", episode_length=10, memory=2),
         num_queries=5,
     )
-    q = Train(env)
+    q = Train(env, config=good_config)
     q.train_follower()
     print("Pretraining done")
     returns = q.train_leader()
