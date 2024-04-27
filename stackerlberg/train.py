@@ -11,7 +11,7 @@ class Train:
         self.env = env
 
         def hashify_follower(obs):
-            return (tuple(obs["queries"]), obs["original"])
+            return tuple(obs)
 
         follower_config = config["follower"] if config else None
         leader_config = config["leader"] if config else None
