@@ -43,4 +43,5 @@ dependencies:
       - python-dateutil==2.9.0.post0
       - six==1.16.0
       - typing-extensions==4.11.0
+      - bitstring==4.2.1
 prefix: /home/xyz/miniconda3/envs/forl

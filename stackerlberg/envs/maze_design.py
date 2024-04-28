@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import time
 
-import heapq
 import numpy as np
+from bitstring import BitArray
 
 from minigrid.core.constants import COLOR_NAMES
 from minigrid.core.grid import Grid
@@ -67,17 +67,6 @@ class Maze(MiniGridEnv):
 
         self.mission = "maze"
 
-    # def render(self):
-    #     super().render()
-    #     img = self.get_frame()
-    #     for i in range(self.width):
-    #         for j in range(self.height):
-    #             if (i, j) in self.path:
-    #                 cell = self.grid.get(i, j)
-    #                 tile_img = Grid.render_tile(cell)
-    #                 highlight_img(tile_img, color=(255,0,0))
-    #     return img
-
 class MazeDesign(ParallelEnv):
 
     metadata = {
@@ -107,8 +96,8 @@ class MazeDesign(ParallelEnv):
         # leader observation: agent_pos, agent_dir, wall_occupancy
         # follower observation: local_goal_pos(-1 if not in agent's view), agent_dir, local_wall_occupancy
         self.observation_spaces = {
-            "leader": spaces.Discrete(grid_area * 4 * (2**grid_area)),
-            "follower": spaces.Discrete((agent_view_area + 1) * 4 * (2**agent_view_area)),
+            "leader": spaces.MultiDiscrete([grid_area, 4, 2**grid_area]),
+            "follower": spaces.MultiDiscrete([agent_view_area + 1, 4, 2**agent_view_area]),
         }
 
         self.episode_length = episode_length
@@ -150,6 +139,7 @@ class MazeDesign(ParallelEnv):
         rewards["leader"] = self.get_leader_reward()
 
         print(f"leader observation: {observations["leader"]}")
+        print(f"global wall binary: {np.binary_repr(observations["leader"][-1])}")
         print(f"leader reward: {rewards["leader"]}")
 
         self.env.render()
@@ -160,6 +150,7 @@ class MazeDesign(ParallelEnv):
         observations["follower"], rewards["follower"] = self.follower_step(actions["follower"])
 
         print(f"follower observation: {observations["follower"]}")
+        print(f"local wall binary: {np.binary_repr(observations["follower"][-1])}")
         print(f"follower reward: {rewards["follower"]}")
 
         self.env.render()
@@ -192,19 +183,24 @@ class MazeDesign(ParallelEnv):
                     if (i, j) != self.env.agent_pos:
                         if local_wall_design[j - topY][i - topX] == 1:
                             self.env.put_obj(Wall(), i, j)
-                
+
+    def binary_matrix_to_int(self, binary_matrix: np.array):
+        binary_vec = binary_matrix.T.flatten()
+        binary_str = "".join(str(bit) for bit in binary_vec)[::-1]
+        int_number = int(binary_str, base=2)
+        return int_number
+
     def get_leader_observation(self):
         wall_design = np.full((self.env.width - 2, self.env.height - 2),0)
         for i in range(1, self.env.width - 1):
             for j in range(1, self.env.height - 1):
                 tile = self.env.grid.get(i, j)
                 if isinstance(tile, Wall):
-                    wall_design[i, j] = 1
-        wall_design_flattened = wall_design.flatten()
+                    wall_design[i - 1, j - 1] = 1
+        wall_design_observation = self.binary_matrix_to_int(wall_design)
         
-        observation = np.insert(wall_design_flattened, 0, 
-        [(self.env.agent_pos[0] - 1) * (self.env.width - 2) + \
-         (self.env.agent_pos[1] - 1), self.env.agent_dir])
+        observation = np.array([(self.env.agent_pos[1] - 1) * (self.env.width - 2) + \
+        (self.env.agent_pos[0] - 1), self.env.agent_dir, wall_design_observation])
         return observation
     
     def get_leader_reward(self):
@@ -248,24 +244,25 @@ class MazeDesign(ParallelEnv):
 
         topX, topY, botX, botY = self.env.get_view_exts()
         
-        local_walls = np.full((self.env.agent_view_size, self.env.agent_view_size),-1)
+        local_walls = np.full((self.env.agent_view_size, self.env.agent_view_size), 0)
         for i in range(topX, botX):
             for j in range(topY, botY):
-                if self.in_grid(i, j):
+                i_local, j_local = self.env.relative_coords(i, j)
+                if not self.in_grid(i, j): # Out of grid map: deemed as walls
+                    local_walls[i_local, j_local] = 1
+                else:
                     tile = self.env.grid.get(i, j)
-                    i_local, j_local = self.env.relative_coords(i, j)
                     if isinstance(tile, Wall):
                         local_walls[i_local, j_local] = 1
-                    else:
-                        local_walls[i_local, j_local] = 0
-        local_walls_flattened = local_walls.flatten()
+                
+        wall_design_observation = self.binary_matrix_to_int(local_walls)
         
         local_goal_pos = self.env.relative_coords(self.env.goal_pos[0], self.env.goal_pos[1])
         if local_goal_pos is None:
             local_goal_pos_index = -1
         else:
             local_goal_pos_index = local_goal_pos[0] * self.env.agent_view_size + local_goal_pos[1]
-        observation = np.insert(local_walls_flattened, 0, [local_goal_pos_index, self.env.agent_dir])
+        observation = np.array([local_goal_pos_index, self.env.agent_dir, wall_design_observation])
 
         return observation, reward
 
