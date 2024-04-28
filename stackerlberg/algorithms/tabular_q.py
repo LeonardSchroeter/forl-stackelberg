@@ -21,7 +21,7 @@ class TabularQ:
     def __init__(self, n_actions, hashify=lambda x: x, config=default_config):
         self.init_hyperparameters(config)
         self.n_actions = n_actions
-        self.follower_q_table = {}
+        self.q_table = {}
         self.hashify = hashify
 
     def init_hyperparameters(self, config):
@@ -34,22 +34,22 @@ class TabularQ:
         if not is_hashable(state):
             state = self.hashify(state)
 
-        if state not in self.follower_q_table:
-            self.follower_q_table[state] = np.zeros(self.n_actions)
+        if state not in self.q_table:
+            self.q_table[state] = np.zeros(self.n_actions)
 
-        self.follower_q_table[state][action] = value
+        self.q_table[state][action] = value
 
     def get_q(self, state, action=None):
         if not is_hashable(state):
             state = self.hashify(state)
 
-        if state not in self.follower_q_table:
-            self.follower_q_table[state] = np.zeros(self.n_actions)
+        if state not in self.q_table:
+            self.q_table[state] = np.zeros(self.n_actions)
 
         if action is None:
-            return self.follower_q_table[state]
+            return self.q_table[state]
         else:
-            return self.follower_q_table[state][action]
+            return self.q_table[state][action]
 
     def get_action(
         self, state, type: Literal["greedy", "softmax", "epsilon-greedy"] = "greedy"
@@ -83,5 +83,10 @@ class TabularQ:
             self.update_q(state, action, reward, next_state)
 
     def print_policy(self):
-        for key in sorted(self.follower_q_table.keys()):
-            print(key, self.get_action(key, "greedy"))
+        for j in range(32):
+            j_bits = [int(x) for x in list(np.binary_repr(j, width=5))]
+            response = []
+            for i in range(5):
+                action = self.get_action([i, *j_bits], type="greedy")
+                response.append(action)
+            print(f"{j_bits} -> {response}")
