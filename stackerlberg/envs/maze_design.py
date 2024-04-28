@@ -56,7 +56,7 @@ class Maze(MiniGridEnv):
 
         self.grid.wall_rect(0, 0, width, height)
 
-        self.goal_pos = (width - 2, 1)
+        self.goal_pos = (width - 2, height - 2)
         self.put_obj(Goal(), self.goal_pos[0], self.goal_pos[1])
 
         if self.agent_start_pos is not None:
@@ -159,7 +159,6 @@ class MazeDesign(ParallelEnv):
 
         observations["follower"], rewards["follower"] = self.follower_step(actions["follower"])
         
-        print(rewards)
         terminated = False
         if self.env.agent_pos == self.env.goal_pos:
             terminated = True
@@ -320,8 +319,7 @@ if __name__ == "__main__":
         #     env.env.render()
 
         observation, reward, terminated = env.step(actions)
-        print(reward)
-        print(terminated)
+        print(f"reward: {reward}, terminated: {terminated}")
         
         # print(reward)
         # print(f"observation: {observation}, reward: {reward}, terminated: {terminated}")
