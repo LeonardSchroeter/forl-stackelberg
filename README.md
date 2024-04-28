@@ -5,7 +5,7 @@
 ```
 conda env create -f environment.yml
 conda activate forl
-git clone https://github.com/YanzhenXiangRobotics/minigrid.git
+git clone https://github.com/YanzhenXiangRobotics/minigrid.git # minigrid/ is in .gitignore so feel free to clone it to current repo
 cd minigrid
 python3 -m pip install -e .
 ```
