@@ -93,27 +93,26 @@ class MazeDesign(ParallelEnv):
 
         agent_view_area = env.agent_view_size * env.agent_view_size
         grid_area = (env.width - 2) * (env.height - 2)
-
+        
+        # design size: size (side length) of local area for leader to design at each timestep
         self.design_size = env.agent_view_size
         self.design_area = self.design_size**2
 
+        # leader action: whether each tile in the area to design is placed wall or not
+        # follower action: rotate ccw(0), rotate cw(1), move forward(2)
         self.action_spaces = {
             "leader": spaces.Discrete(2**self.design_area),
             "follower": spaces.Discrete(3),
         }
+        # leader observation: agent_pos, agent_dir, wall_occupancy
+        # follower observation: local_goal_pos(-1 if not in agent's view), agent_dir, local_wall_occupancy
         self.observation_spaces = {
-            "leader": spaces.Discrete(2**grid_area * grid_area * 4),
-            "follower": spaces.Discrete(2**agent_view_area * (agent_view_area + 1)), # goal position.-1 if no goal
+            "leader": spaces.Discrete(grid_area * 4 * (2**grid_area)),
+            "follower": spaces.Discrete((agent_view_area + 1) * 4 * (2**agent_view_area)),
         }
 
         self.episode_length = episode_length
         self.current_step = 0
-
-        # self.get_goal_position() # Goal is placed in prior
-        
-        # self.wall_design = np.full((env.width, env.height), 0)
-        # self.leader_traversed_map = np.full((env.width, env.height), 0)
-
 
     def action_space(self, agent: str) -> spaces.Space:
         return self.action_spaces[agent]
@@ -144,35 +143,32 @@ class MazeDesign(ParallelEnv):
 
         self.current_step += 1
 
+        print("Leader takes action")
         self.leader_act(actions["leader"])
-        observations["leader"] = self.get_leader_observation() #[agent_pos, goal_pos, wall_occupancy]
+        # leader observation: agent_pos, agent_dir, wall_occupancy
+        observations["leader"] = self.get_leader_observation() 
         rewards["leader"] = self.get_leader_reward()
+
+        print(f"leader observation: {observations["leader"]}")
+        print(f"leader reward: {rewards["leader"]}")
 
         self.env.render()
         time.sleep(0.5)
-        
-        # self.colors = self.get_colors()
-        
-        # for tile in path_to_goal:
-        #     self.env.grid.get(tile[0], tile[1]).color = "yellow"
 
-
+        print("Follower takes action")
+        # follower observation: local_goal_pos, agent_dir, local_wall_occupancy
         observations["follower"], rewards["follower"] = self.follower_step(actions["follower"])
+
+        print(f"follower observation: {observations["follower"]}")
+        print(f"follower reward: {rewards["follower"]}")
         
         terminated = False
         if self.env.agent_pos == self.env.goal_pos:
             terminated = True
 
-        return observations, rewards, terminated
+        print(f"terminated: {terminated}")
 
-    # def get_goal_position(self):
-    #     for i in range(self.env.width):
-    #         for j in range(self.env.height):
-    #             tile = self.env.grid.get(i, j)
-    #             if isinstance(tile, Goal):
-    #                 self.env.goal_pos = (i, j)
-    #                 print(f"Goal: {self.env.goal_pos}")
-    #                 break
+        return observations, rewards, terminated
 
     def in_grid(self, i, j):
         if (i >= 1) and (i < self.env.width - 1) and (j >= 1) and (j < self.env.height - 1):
@@ -193,24 +189,6 @@ class MazeDesign(ParallelEnv):
                     if (i, j) != self.env.agent_pos:
                         if local_wall_design[j - topY][i - topX] == 1:
                             self.env.put_obj(Wall(), i, j)
-
-        # match self.env.agent_dir:
-        #     case 0: #">"
-        #         self.update_walls(start=np.array([self.env.agent_pos[0],
-        #                                           self.env.agent_pos[1]-(self.design_size-1)/2], dtype=int),
-        #                           local_wall_design=local_wall_design)
-        #     case 1: #"V"
-        #         self.update_walls(start=np.array([self.env.agent_pos[0]-(self.design_size-1)/2,
-        #                                           self.env.agent_pos[1]-(self.design_size)+1], dtype=int),
-        #                           local_wall_design=local_wall_design) 
-        #     case 2: #"<"
-        #         self.update_walls(start=np.array([self.env.agent_pos[0]-self.design_size+1,
-        #                                           self.env.agent_pos[1]-(self.design_size-1)/2], dtype=int),
-        #                           local_wall_design=local_wall_design)
-        #     case 3: #"^"
-        #         self.update_walls(start=np.array([self.env.agent_pos[0]-(self.design_size-1)/2,
-        #                                           self.env.agent_pos[1]+self.design_size-1], dtype=int),
-        #                           local_wall_design=local_wall_design)
                 
     def get_leader_observation(self):
         wall_design = np.full((self.env.width, self.env.height),0)
@@ -222,8 +200,8 @@ class MazeDesign(ParallelEnv):
         wall_design_flattened = wall_design.flatten()
         
         observation = np.insert(wall_design_flattened, 0, 
-        [self.env.agent_pos[0] * self.env.width + \
-         self.env.agent_pos[1], self.env.agent_dir])
+        [(self.env.agent_pos[0] - 1) * (self.env.width - 2) + \
+         (self.env.agent_pos[1] - 1), self.env.agent_dir])
         return observation
     
     def get_leader_reward(self):
@@ -267,14 +245,16 @@ class MazeDesign(ParallelEnv):
 
         topX, topY, botX, botY = self.env.get_view_exts()
         
-        local_walls = np.full((self.env.agent_view_size, self.env.agent_view_size),0)
+        local_walls = np.full((self.env.agent_view_size, self.env.agent_view_size),-1)
         for i in range(topX, botX):
             for j in range(topY, botY):
                 if self.in_grid(i, j):
                     tile = self.env.grid.get(i, j)
+                    i_local, j_local = self.env.relative_coords(i, j)
                     if isinstance(tile, Wall):
-                        i_local, j_local = self.env.relative_coords(i, j)
                         local_walls[i_local, j_local] = 1
+                    else:
+                        local_walls[i_local, j_local] = 0
         local_walls_flattened = local_walls.flatten()
         
         local_goal_pos = self.env.relative_coords(self.env.goal_pos[0], self.env.goal_pos[1])
@@ -282,20 +262,9 @@ class MazeDesign(ParallelEnv):
             local_goal_pos_index = -1
         else:
             local_goal_pos_index = local_goal_pos[0] * self.env.agent_view_size + local_goal_pos[1]
-        observation = np.insert(local_walls_flattened, 0, local_goal_pos_index)
+        observation = np.insert(local_walls_flattened, 0, [local_goal_pos_index, self.env.agent_dir])
 
         return observation, reward
-
-    # def update_walls(self, start, local_wall_design):
-    #     for i in range(start[0], start[0] + local_wall_design.shape[0]):
-    #         for j in range(start[1], start[1] + local_wall_design.shape[1]):
-    #             if (i <= self.env.width) and (j <= self.env.height) and \
-    #                 (not (i, j) == self.env.agent_pos) and \
-    #                 (not (i, j) == self.env.goal_pos):
-    #                     self.env.set(i, j, Wall())
-        #                 self.wall_design[i, j] = local_wall_design[i - start[0], j - start[1]]
-        # self.wall_design[int(self.env.agent_pos[0]), int(self.env.agent_pos[1])] = 0 # Cannot place wall at follower position
-        # self.wall_design[int(self.env.goal_pos[0]), int(self.env.goal_pos[1])] = 0 # Cannot place wall at goal position
 
 if __name__ == "__main__":
     env = Maze(size=9, agent_start_pos=(1, 1), agent_start_dir=0, agent_view_size=3)
@@ -319,7 +288,7 @@ if __name__ == "__main__":
         #     env.env.render()
 
         observation, reward, terminated = env.step(actions)
-        print(f"reward: {reward}, terminated: {terminated}")
+        
         
         # print(reward)
         # print(f"observation: {observation}, reward: {reward}, terminated: {terminated}")
