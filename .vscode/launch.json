@@ -10,6 +10,22 @@
             "request": "launch",
             "program": "${workspaceFolder}/stackerlberg/train.py",
             "console": "integratedTerminal",
+        },
+        {
+            "name": "Tutorial",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/stackerlberg/envs/test_simple_maze.py",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        }
+        {
+            "name": "TestMaze",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/stackerlberg/envs/maze_design.py",
+            "console": "integratedTerminal",
+            "justMyCode": false
         }
     ]
 }
