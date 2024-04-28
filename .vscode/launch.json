@@ -5,10 +5,17 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Training",
+            "name": "Tabular Q-learning",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/stackerlberg/train.py",
+            "console": "integratedTerminal",
+        },
+        {
+            "name": "PPO",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/stackerlberg/train_ppo.py",
             "console": "integratedTerminal",
         }
     ]
