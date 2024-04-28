@@ -11,3 +11,4 @@ python3 -m pip install -e .
 ```
 ## Running a demo
 ```python3 stackerlberg/envs/maze_design.py```
+Encouraged to use VSCode debugger.
