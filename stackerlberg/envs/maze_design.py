@@ -56,7 +56,7 @@ class Maze(MiniGridEnv):
 
         self.grid.wall_rect(0, 0, width, height)
 
-        self.goal_pos = (width - 2, height - 2)
+        self.goal_pos = (width - 2, 1)
         self.put_obj(Goal(), self.goal_pos[0], self.goal_pos[1])
 
         if self.agent_start_pos is not None:
@@ -261,7 +261,7 @@ class MazeDesign(ParallelEnv):
         if local_goal_pos is None:
             local_goal_pos_index = -1
         else:
-            local_goal_pos_index = local_goal_pos[0] * self.env.agent_view_size + local_goal_pos[1]
+            local_goal_pos_index = local_goal_pos[1] * self.env.agent_view_size + local_goal_pos[0]
         observation = np.array([local_goal_pos_index, self.env.agent_dir, wall_design_observation])
 
         return observation, reward
@@ -281,7 +281,7 @@ if __name__ == "__main__":
     #         for j in range(env.env.height):
                 # print(env.env.grid.get(i, j))
 
-    for _ in range(10):
+    for _ in range(7):
         
         # if hasattr(env, "colors"):
         #     env.set_colors(env.colors)
