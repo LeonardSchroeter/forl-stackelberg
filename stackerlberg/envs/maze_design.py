@@ -92,7 +92,7 @@ class MazeDesign(ParallelEnv):
         self.agents = ["leader", "follower"]
 
         agent_view_area = env.agent_view_size * env.agent_view_size
-        grid_area = (env.width - 2) * (env.height - 2)
+        grid_area = (env.width - 2) * (env.height - 2) # The outer are walls so -2
         
         # design size: size (side length) of local area for leader to design at each timestep
         self.design_size = env.agent_view_size
@@ -161,6 +161,9 @@ class MazeDesign(ParallelEnv):
 
         print(f"follower observation: {observations["follower"]}")
         print(f"follower reward: {rewards["follower"]}")
+
+        self.env.render()
+        time.sleep(0.5)
         
         terminated = False
         if self.env.agent_pos == self.env.goal_pos:
@@ -191,9 +194,9 @@ class MazeDesign(ParallelEnv):
                             self.env.put_obj(Wall(), i, j)
                 
     def get_leader_observation(self):
-        wall_design = np.full((self.env.width, self.env.height),0)
-        for i in range(self.env.width):
-            for j in range(self.env.height):
+        wall_design = np.full((self.env.width - 2, self.env.height - 2),0)
+        for i in range(1, self.env.width - 1):
+            for j in range(1, self.env.height - 1):
                 tile = self.env.grid.get(i, j)
                 if isinstance(tile, Wall):
                     wall_design[i, j] = 1
