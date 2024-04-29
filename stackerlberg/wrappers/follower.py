@@ -5,6 +5,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from pettingzoo.utils.wrappers import BaseParallelWrapper
 from gymnasium import spaces
+from gymnasium.spaces import Tuple
 
 from envs.matrix_game import IteratedMatrixGame
 
@@ -30,12 +31,15 @@ class FollowerWrapper(BaseParallelWrapper):
         if agent == "leader":
             return self.env.observation_space(agent)
 
-        return spaces.MultiDiscrete(
-            [
-                self.env.observation_space(agent).n,
-                *[self.env.action_space("leader").n for _ in range(self.num_queries)],
-            ]
-        )
+        # return spaces.MultiDiscrete(
+        #     [
+        #         self.env.observation_space(agent).n,
+        #         *[self.env.action_space("leader").n for _ in range(self.num_queries)],
+        #     ]
+        # )
+        return Tuple((self.env.observation_space(agent), 
+                      spaces.MultiDiscrete([self.env.action_space("leader").n \
+                                             for _ in range(self.num_queries)])))
 
     def reset(self):
         obs = self.env.reset()

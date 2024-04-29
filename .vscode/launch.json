@@ -17,6 +17,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/stackerlberg/train_ppo.py",
             "console": "integratedTerminal",
+            "justMyCode": false,
             "args": ["--headless"]
         },
         {
@@ -26,7 +27,7 @@
             "program": "${workspaceFolder}/stackerlberg/train_ppo.py",
             "console": "integratedTerminal",
             "args": ["--env",
-                    "mat-design"]
+                    "mat-game"]
         },
         {
             "name": "Test Maze",

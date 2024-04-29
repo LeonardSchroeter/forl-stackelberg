@@ -19,10 +19,20 @@ parser.add_argument("--headless", help="disable GUI", action="store_true")
 args = parser.parse_args()
 
 if __name__ == "__main__":
-    env_follower = FollowerWrapper(
-        IteratedMatrixGame(matrix="prisoners_dilemma", episode_length=10, memory=2),
-        num_queries=5,
-    )
+    if args.env == "mat-game":
+        env_follower = FollowerWrapper(
+            IteratedMatrixGame(matrix="prisoners_dilemma", episode_length=10, memory=2),
+            num_queries=5,
+        )   
+    else:
+        grid_size = 7
+        max_steps = 4 * grid_size**2
+        env_follower = FollowerWrapper(MazeDesign(
+            (Maze(size=7, agent_start_pos=(1,1), agent_start_dir=0, 
+                  agent_view_size=3, max_steps=max_steps)),
+            headless=args.headless),
+            num_queries=5,
+        )
     env_follower = SingleAgentFollowerWrapper(env_follower)
 
     run = wandb.init(project="forl-stackerlberg", sync_tensorboard=True)
@@ -40,12 +50,12 @@ if __name__ == "__main__":
     else:
         grid_size = 7
         max_steps = 4 * grid_size**2
-        env_leader = MazeDesign(
+        env_leader = FollowerWrapper(MazeDesign(
             (Maze(size=7, agent_start_pos=(1,1), agent_start_dir=0, 
-                  agent_view_size=4, max_steps=max_steps)),
+                  agent_view_size=3, max_steps=max_steps)),
+            headless=args.headless),
             num_queries=5,
-            headless=args.headless
-    )
+        )
     env_leader = SingleAgentLeaderWrapper(
         env_leader, queries=[0, 1, 2, 3, 4], follower_model=model
     )
