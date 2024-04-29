@@ -7,6 +7,9 @@ from wrappers.single_agent import (
 )
 from wrappers.follower import FollowerWrapper
 
+import wandb
+from wandb.integration.sb3 import WandbCallback
+
 if __name__ == "__main__":
     env_follower = FollowerWrapper(
         IteratedMatrixGame(matrix="prisoners_dilemma", episode_length=10, memory=2),
@@ -14,8 +17,11 @@ if __name__ == "__main__":
     )
     env_follower = SingleAgentFollowerWrapper(env_follower)
 
-    model = PPO("MlpPolicy", env_follower, verbose=1)
-    model.learn(total_timesteps=50_000)
+    run = wandb.init(project="forl-stackerlberg", sync_tensorboard=True)
+
+    model = PPO("MlpPolicy", env_follower, verbose=1, tensorboard_log=f"runs/{run.id}")
+    model.learn(total_timesteps=50_000, callback=WandbCallback(gradient_save_freq=100,
+        model_save_path=f"models/{run.id}", verbose=2))
     model.save("checkpoints/follower_ppo")
 
     env_leader = FollowerWrapper(

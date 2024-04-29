@@ -7,3 +7,4 @@ dist
 wandb/
 customized_tests/
 checkpoints/
+runs/
