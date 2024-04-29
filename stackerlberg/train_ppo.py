@@ -1,6 +1,7 @@
 from stable_baselines3 import PPO
 
 from envs.matrix_game import IteratedMatrixGame
+from envs.maze_design import Maze, MazeDesign
 from wrappers.single_agent import (
     SingleAgentFollowerWrapper,
     SingleAgentLeaderWrapper,
@@ -9,6 +10,13 @@ from wrappers.follower import FollowerWrapper
 
 import wandb
 from wandb.integration.sb3 import WandbCallback
+
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("--env", 
+help="choose you environment: mat-game, maze-design. Default to maze-design")
+parser.add_argument("--headless", help="disable GUI", action="store_true")
+args = parser.parse_args()
 
 if __name__ == "__main__":
     env_follower = FollowerWrapper(
@@ -24,9 +32,19 @@ if __name__ == "__main__":
         model_save_path=f"models/{run.id}", verbose=2))
     model.save("checkpoints/follower_ppo")
 
-    env_leader = FollowerWrapper(
-        IteratedMatrixGame(matrix="prisoners_dilemma", episode_length=10, memory=2),
-        num_queries=5,
+    if args.env == "mat-game":
+        env_leader = FollowerWrapper(
+            IteratedMatrixGame(matrix="prisoners_dilemma", episode_length=10, memory=2),
+            num_queries=5,
+    )
+    else:
+        grid_size = 7
+        max_steps = 4 * grid_size**2
+        env_leader = MazeDesign(
+            (Maze(size=7, agent_start_pos=(1,1), agent_start_dir=0, 
+                  agent_view_size=4, max_steps=max_steps)),
+            num_queries=5,
+            headless=args.headless
     )
     env_leader = SingleAgentLeaderWrapper(
         env_leader, queries=[0, 1, 2, 3, 4], follower_model=model

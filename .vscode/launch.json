@@ -12,10 +12,27 @@
             "console": "integratedTerminal",
         },
         {
-            "name": "PPO",
+            "name": "PPO Maze",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/stackerlberg/train_ppo.py",
+            "console": "integratedTerminal",
+            "args": ["--headless"]
+        },
+        {
+            "name": "PPO Mat",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/stackerlberg/train_ppo.py",
+            "console": "integratedTerminal",
+            "args": ["--env",
+                    "mat-design"]
+        },
+        {
+            "name": "Test Maze",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/stackerlberg/envs/maze_design.py",
             "console": "integratedTerminal",
         }
     ]
