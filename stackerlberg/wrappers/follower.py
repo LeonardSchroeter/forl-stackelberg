@@ -31,15 +31,21 @@ class FollowerWrapper(BaseParallelWrapper):
         if agent == "leader":
             return self.env.observation_space(agent)
 
-        # return spaces.MultiDiscrete(
-        #     [
-        #         self.env.observation_space(agent).n,
-        #         *[self.env.action_space("leader").n for _ in range(self.num_queries)],
-        #     ]
-        # )
-        return Tuple((self.env.observation_space(agent), 
-                      spaces.MultiDiscrete([self.env.action_space("leader").n \
-                                             for _ in range(self.num_queries)])))
+        
+        if isinstance(self.env.observation_space(agent), spaces.Discrete):
+            return spaces.MultiDiscrete(
+                [
+                    self.env.observation_space(agent).n,
+                    *[self.env.action_space("leader").n for _ in range(self.num_queries)],
+                ]
+            )
+        elif isinstance(self.env.observation_space(agent), spaces.MultiDiscrete):
+            return spaces.MultiDiscrete(
+                [
+                    *self.env.observation_space(agent).nvec,
+                    *[self.env.action_space("leader").n for _ in range(self.num_queries)],
+                ]
+            )
 
     def reset(self):
         obs = self.env.reset()

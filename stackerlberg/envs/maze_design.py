@@ -84,7 +84,7 @@ class MazeDesign(ParallelEnv):
         
         # design size: size (side length) of local area for leader to design at each timestep
         self.design_size = env.agent_view_size
-        self.design_area = self.design_size**2
+        self.design_area = self.design_size**2 - 1 # cannot place wall on agent
 
         # leader action: whether each tile in the area to design is placed wall or not
         # follower action: rotate ccw(0), rotate cw(1), move forward(2)
@@ -96,7 +96,7 @@ class MazeDesign(ParallelEnv):
         # follower observation: local_goal_pos(-1 if not in agent's view), agent_dir, local_wall_occupancy
         self.observation_spaces = {
             "leader": spaces.MultiDiscrete([grid_area, 4, 2**grid_area]),
-            "follower": spaces.MultiDiscrete([agent_view_area + 1, 4, 2**agent_view_area]),
+            "follower": spaces.MultiDiscrete([agent_view_area + 1, 4, 2**(agent_view_area - 1)]),
         }
 
     def action_space(self, agent: str) -> spaces.Space:
