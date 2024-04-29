@@ -3,15 +3,11 @@ from __future__ import annotations
 import time
 
 import numpy as np
-from bitstring import BitArray
 
-from minigrid.core.constants import COLOR_NAMES
 from minigrid.core.grid import Grid
 from minigrid.core.mission import MissionSpace
-from minigrid.core.world_object import Door, Goal, Key, Wall
-from minigrid.manual_control import ManualControl
+from minigrid.core.world_object import Goal, Wall
 from minigrid.minigrid_env import MiniGridEnv
-from minigrid.utils.rendering import highlight_img
 
 from gymnasium import spaces
 
@@ -56,7 +52,7 @@ class Maze(MiniGridEnv):
 
         self.grid.wall_rect(0, 0, width, height)
 
-        self.goal_pos = (width - 2, 1)
+        self.goal_pos = (width - 2, height - 2)
         self.put_obj(Goal(), self.goal_pos[0], self.goal_pos[1])
 
         if self.agent_start_pos is not None:
@@ -73,7 +69,7 @@ class MazeDesign(ParallelEnv):
         "name": "maze_design",
     }
 
-    def __init__(self, env: Maze, episode_length: int = 1) -> None:
+    def __init__(self, env: Maze, episode_length: int) -> None:
         super().__init__()
 
         self.env = env
@@ -110,21 +106,8 @@ class MazeDesign(ParallelEnv):
         return self.observation_spaces[agent]
 
     def reset(self):
-        # self.current_step = 0
+        self.current_step = 0
         return {"leader": 0, "follower": 0}
-    
-    def get_colors(self):
-        colors = np.zeros((self.env.width, self.env.height))
-        for i in range(self.env.width):
-            for j in range(self.env.height):
-                colors = self.env.grid.get(i, j).color
-
-        return colors
-    
-    def set_colors(self, colors):
-        for i in range(self.env.width):
-            for j in range(self.env.height):
-                self.env.grid.get(i, j).color = colors[i, j]
     
     def step(self, actions):
 
@@ -156,13 +139,12 @@ class MazeDesign(ParallelEnv):
         self.env.render()
         time.sleep(0.5)
         
-        terminated = False
-        if self.env.agent_pos == self.env.goal_pos:
-            terminated = True
+        terminated = (self.current_step >= self.episode_length) or \
+        (self.env.agent_pos == self.env.goal_pos)
 
         print(f"terminated: {terminated}")
 
-        return observations, rewards, terminated
+        return observations, rewards, terminated, _, _
 
     def in_grid(self, i, j):
         if (i >= 1) and (i < self.env.width - 1) and (j >= 1) and (j < self.env.height - 1):
@@ -267,8 +249,8 @@ class MazeDesign(ParallelEnv):
         return observation, reward
 
 if __name__ == "__main__":
-    env = Maze(size=9, agent_start_pos=(1, 1), agent_start_dir=0, agent_view_size=3)
-    env = MazeDesign(env=env, episode_length=20)
+    env = Maze(size=9, agent_start_pos=(1, 1), agent_start_dir=0, agent_view_size=3, max_steps=20)
+    env = MazeDesign(env=env, episode_length=env.max_steps)
 
     env.env.reset()
 
@@ -281,13 +263,9 @@ if __name__ == "__main__":
     #         for j in range(env.env.height):
                 # print(env.env.grid.get(i, j))
 
-    for _ in range(7):
-        
-        # if hasattr(env, "colors"):
-        #     env.set_colors(env.colors)
-        #     env.env.render()
+    for _ in range(25):
 
-        observation, reward, terminated = env.step(actions)
+        observation, reward, terminated, _, _ = env.step(actions)
         
         
         # print(reward)
