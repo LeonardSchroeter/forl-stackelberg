@@ -34,6 +34,15 @@
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/stackerlberg/envs/maze_design.py",
+            "justMyCode": false,
+            "console": "integratedTerminal",
+        },
+        {
+            "name": "Test Drone",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/stackerlberg/envs/drone_game.py",
+            "justMyCode": false,
             "console": "integratedTerminal",
         }
     ]
