@@ -107,7 +107,7 @@ class DroneGame(ParallelEnv):
         # follower action: fwd(0), left(1), right(2)
         self.action_spaces = {
             "leader": spaces.Discrete(len(self.env.drone_options)),
-            "follower": spaces.Discrete(3),
+            "follower": spaces.Discrete(4),
         }
         # leader observation: which division does the follower lie in
         # follower observation: wall occupancy in its local view size
@@ -232,12 +232,22 @@ class DroneGame(ParallelEnv):
         match action:
             case 0:  # fwd
                 self.env.step(self.env.actions.forward)
-            # case 1: #bwd
-            #     self.env.step(self.env.actions.backward)
-            case 1:  # left
-                self.env.step(self.env.actions.move_left)
-            case 2:  # right
-                self.env.step(self.env.actions.move_right)
+            case 1:  # bwd
+                self.env.render_mode = None
+                self.env.step(self.env.actions.left)
+                self.env.step(self.env.actions.left)
+                self.env.render_mode = "human" if not self.headless else None
+                self.env.step(self.env.actions.forward)
+            case 2:  # left
+                self.env.render_mode = None
+                self.env.step(self.env.actions.left)
+                self.env.render_mode = "human" if not self.headless else None
+                self.env.step(self.env.actions.forward)
+            case 3:  # right
+                self.env.render_mode = None
+                self.env.step(self.env.actions.right)
+                self.env.render_mode = "human" if not self.headless else None
+                self.env.step(self.env.actions.forward)
 
     def get_follower_observation(self):
         topX, topY, botX, botY = self.env.get_view_exts()
@@ -305,7 +315,6 @@ class Drone:
         dirs = list(filter(lambda x: self.in_grid(self.center + Point2D(*x)), dirs))
 
         index = np.random.randint(len(dirs))
-        index = 3
         move = Point2D(*dirs[index])
         next_center = self.center + move
 
@@ -319,12 +328,11 @@ if __name__ == "__main__":
     env = DroneGameEnv(agent_start_pos=(3, 10))
     env = DroneGame(env=env)
 
-    actions = {}
-    actions["follower"] = 0
-
     i = 0
     env.env.reset()
     while True:
+        actions = {}
+        actions["follower"] = env.action_space("follower").sample()
         actions["leader"] = i % 4
         observation, reward, terminated, _, _ = env.step(actions)
         if terminated:
