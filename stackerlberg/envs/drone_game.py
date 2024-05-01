@@ -112,8 +112,8 @@ class DroneGame(ParallelEnv):
         # leader observation: which division does the follower lie in
         # follower observation: wall occupancy in its local view size
         self.observation_spaces = {
-            "leader": spaces.Discrete(2**self.env.num_divisions),
-            "follower": spaces.Discrete(2**agent_view_area),
+            "leader": spaces.MultiBinary(self.env.num_divisions),
+            "follower": spaces.MultiDiscrete([4] * agent_view_area),
         }
 
         self.drones = []
@@ -167,12 +167,11 @@ class DroneGame(ParallelEnv):
             self.env.render()
             time.sleep(0.5)
         observations["follower"] = self.get_follower_observation()
+        # TODO: why do we add the height here?
         rewards["follower"] = -rewards["leader"] + self.env.height
 
         print(f"follower observation: {observations['follower']}")
-        print(
-            f"follower observation binary: {np.binary_repr(observations['follower'])}"
-        )
+        print(f"follower observation binary: {observations['follower']}")
         print(f"follower reward: {rewards['follower']}")
 
         terminated = (
@@ -191,25 +190,26 @@ class DroneGame(ParallelEnv):
         drone_place = self.env.drone_options[action]
         self.drones.append(Drone(env=self.env, radius=1, center=drone_place))
 
-    def binary_matrix_to_int(self, binary_matrix: np.array):
-        binary_vec = binary_matrix.T.flatten()
-        binary_str = "".join(str(bit) for bit in binary_vec)[::-1]
-        int_number = int(binary_str, base=2)
-        return int_number
+    # def binary_matrix_to_int(self, binary_matrix: np.array):
+    #     binary_vec = binary_matrix.T.flatten()
+    #     binary_str = "".join(str(bit) for bit in binary_vec)[::-1]
+    #     int_number = int(binary_str, base=2)
+    #     return int_number
 
     def get_leader_observation(self):
-        m = (
-            self.env.agent_pos[0] < self.env.width / 2,
-            self.env.agent_pos[1] < self.env.height / 2,
-        )
-        if m == (1, 1):
-            observation = 0
-        elif m == (1, 0):
-            observation = 1
-        elif m == (0, 1):
-            observation = 2
-        elif m == (0, 0):
-            observation = 3
+        grid_center = Point2D(self.env.width // 2, self.env.height // 2)
+
+        observation = np.zeros(self.env.num_divisions)
+
+        for drone in self.drones:
+            if drone.center <= grid_center:
+                observation[0] = 1
+            elif drone.center.top_right(grid_center):
+                observation[1] = 1
+            elif drone.center > grid_center:
+                observation[2] = 1
+            elif drone.center.bottom_left(grid_center):
+                observation[3] = 1
 
         return observation
 
@@ -221,6 +221,7 @@ class DroneGame(ParallelEnv):
         ):
             reward += self.env.height
 
+        # TODO: Do we even need this? The reward already scales by distance to the goal
         if isinstance(
             self.env.grid.get(self.env.agent_pos[0], self.env.agent_pos[1]), Goal
         ):
@@ -229,45 +230,44 @@ class DroneGame(ParallelEnv):
         return reward
 
     def follower_act(self, action):
+        self.env.render_mode = None
         match action:
             case 0:  # fwd
                 self.env.step(self.env.actions.forward)
             case 1:  # bwd
-                self.env.render_mode = None
                 self.env.step(self.env.actions.left)
                 self.env.step(self.env.actions.left)
-                self.env.render_mode = "human" if not self.headless else None
                 self.env.step(self.env.actions.forward)
+                self.env.step(self.env.actions.left)
+                self.env.step(self.env.actions.left)
             case 2:  # left
-                self.env.render_mode = None
                 self.env.step(self.env.actions.left)
-                self.env.render_mode = "human" if not self.headless else None
                 self.env.step(self.env.actions.forward)
-            case 3:  # right
-                self.env.render_mode = None
                 self.env.step(self.env.actions.right)
-                self.env.render_mode = "human" if not self.headless else None
+            case 3:  # right
+                self.env.step(self.env.actions.right)
                 self.env.step(self.env.actions.forward)
+                self.env.step(self.env.actions.left)
+        self.env.render_mode = "human" if not self.headless else None
+        if not self.headless:
+            self.env.render()
 
     def get_follower_observation(self):
         topX, topY, botX, botY = self.env.get_view_exts()
 
-        local_lava = np.full((self.env.agent_view_size, self.env.agent_view_size), 0)
+        observation = np.zeros((self.env.agent_view_size, self.env.agent_view_size))
         for i in range(topX, botX):
             for j in range(topY, botY):
                 i_local, j_local = self.env.relative_coords(i, j)
-                if not self.env.in_grid(
-                    Point2D(i, j)
-                ):  # Out of grid map: deemed as lava (TODO: improve)
-                    local_lava[i_local, j_local] = 1
-                else:
-                    tile = self.env.grid.get(i, j)
-                    if isinstance(tile, Lava):
-                        local_lava[i_local, j_local] = 1
 
-        observation = self.binary_matrix_to_int(local_lava)
+                if not self.env.in_grid(Point2D(i, j)):
+                    observation[i_local, j_local] = 1
+                elif isinstance(self.env.grid.get(i, j), Lava):
+                    observation[i_local, j_local] = 2
+                elif isinstance(self.env.grid.get(i, j), Wall):
+                    observation[i_local, j_local] = 3
 
-        return observation
+        return observation.flatten()
 
 
 class Drone:
