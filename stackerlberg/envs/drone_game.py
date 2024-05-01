@@ -273,11 +273,11 @@ class Drone:
     def fill_body(self, type):
         for i in range(
             self.center.x - self.radius,
-            self.center.x + self.radius,
+            self.center.x + self.radius + 1,
         ):
             for j in range(
                 self.center.y - self.radius,
-                self.center.y + self.radius,
+                self.center.y + self.radius + 1,
             ):
                 if self.env.in_grid(Point2D(i, j)):
                     if type is None:
