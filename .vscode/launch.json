@@ -12,13 +12,20 @@
             "console": "integratedTerminal",
         },
         {
-            "name": "PPO Maze",
+            "name": "PPO Drone",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/stackerlberg/train_ppo.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["--headless"]
+            "args": ["--headless",
+                    // "--pretrain",
+                    // "--testpretrain",
+                    // "--train",
+                    "--testtrain",
+                    "--env",
+                    "dronegame",
+                    ]
         },
         {
             "name": "PPO Mat",
@@ -27,7 +34,7 @@
             "program": "${workspaceFolder}/stackerlberg/train_ppo.py",
             "console": "integratedTerminal",
             "args": ["--env",
-                    "mat-game"]
+                    "matgame"]
         },
         {
             "name": "Test Maze",
