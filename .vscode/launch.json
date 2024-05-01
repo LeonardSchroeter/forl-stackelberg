@@ -19,12 +19,12 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": ["--headless",
-                    "--env",
-                    "dronegame",
                     // "--pretrain",
                     // "--testpretrain",
                     // "--train",
                     "--testtrain",
+                    "--env",
+                    "dronegame",
                     ]
         },
         {
