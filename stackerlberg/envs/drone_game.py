@@ -78,8 +78,11 @@ class DroneGameEnv(MiniGridEnv):
 
         self.mission = "drone game"
 
-    def in_grid(self, point: Point2D):
-        return point >= Point2D(1, 1) and point <= Point2D(self.height, self.width)
+    def in_grid(self, point: Point2D, exclude_goal_line=True):
+        return point >= Point2D(1, 1) and point <= Point2D(
+            self.width - 2 - int(exclude_goal_line),
+            self.height - 2,
+        )
 
 
 class DroneGame(ParallelEnv):
@@ -135,9 +138,9 @@ class DroneGame(ParallelEnv):
             dead_drone.undo_lava()
             del dead_drone
 
-        if not self.headless:
-            self.env.render()
-            time.sleep(0.5)
+        # if not self.headless:
+        #     self.env.render()
+        #     time.sleep(0.5)
 
         print("Leader takes action")
         self.leader_act(actions["leader"])
@@ -148,7 +151,11 @@ class DroneGame(ParallelEnv):
         print(f"leader reward: {rewards['leader']}")
 
         for drone in self.drones:
-            drone.browian_motion()
+            drone.undo_lava()
+        for drone in self.drones:
+            drone.brownian_motion()
+        for drone in self.drones:
+            drone.set_lava()
 
         if not self.headless:
             self.env.render()
@@ -291,21 +298,18 @@ class Drone:
     def undo_lava(self):
         self.fill_body(None)
 
-    def browian_motion(self):
+    def brownian_motion(self):
         # self.to_death -= 1
-
-        self.undo_lava()
 
         dirs = [(0, 1), (0, -1), (-1, 0), (1, 0)]
         dirs = list(filter(lambda x: self.in_grid(self.center + Point2D(*x)), dirs))
 
-        index = np.random.randint(4)
+        index = np.random.randint(len(dirs))
+        index = 3
         move = Point2D(*dirs[index])
         next_center = self.center + move
 
         self.center = next_center
-
-        self.set_lava()
 
     # def get_follower_reward(self):
     #     pass
