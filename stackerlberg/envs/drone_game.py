@@ -131,7 +131,6 @@ class DroneGame(ParallelEnv):
         return {"leader": 0, "follower": 0}
 
     def step(self, actions):
-
         if not self.headless:
             print(f"\n STEP: {self.env.step_count}\n")
 
@@ -145,7 +144,7 @@ class DroneGame(ParallelEnv):
         # if not self.headless:
         #     self.env.render()
         #     time.sleep(0.5)
-        
+
         if not self.headless:
             print("Leader takes action")
         self.leader_act(actions["leader"])
@@ -208,8 +207,15 @@ class DroneGame(ParallelEnv):
     #     return int_number
 
     def get_leader_observation(self):
-        region_size = self.env.height / 4
-        observation = int(self.env.agent_pos[0] / region_size)
+        observation = np.zeros(self.env.num_divisions)
+
+        for drone in self.drones:
+            dists = [
+                drone.center.euclidean_distance(Point2D(i, j))
+                for i, j in self.env.drone_options
+            ]
+            index = np.argmin(dists)
+            observation[index] = 1
 
         return observation
 
@@ -271,7 +277,7 @@ class DroneGame(ParallelEnv):
                     observation[i_local, j_local] = 3
 
         return observation.flatten()
-    
+
     def get_follower_reward(self):
         reward = self.env.agent_pos[0]
 
@@ -340,10 +346,10 @@ class Drone:
 
 
 if __name__ == "__main__":
-    env = DroneGameEnv(agent_start_pos=(3, 10),agent_dir_fixed=True)
+    env = DroneGameEnv(agent_start_pos=(3, 10), agent_dir_fixed=True)
     env = DroneGame(env=env)
 
-    follower_action_seq = [0,0,0,0,0,2,2,0,0,3,3,1,1,0,0,0,0]
+    follower_action_seq = [0, 0, 0, 0, 0, 2, 2, 0, 0, 3, 3, 1, 1, 0, 0, 0, 0]
 
     i = 0
     env.env.reset()

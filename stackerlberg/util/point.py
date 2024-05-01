@@ -35,3 +35,6 @@ class Point2D:
 
     def __str__(self):
         return f"({self.x}, {self.y})"
+
+    def euclidean_distance(self, other):
+        return ((self.x - other.x) ** 2 + (self.y - other.y) ** 2) ** 0.5
