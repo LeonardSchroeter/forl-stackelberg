@@ -29,6 +29,7 @@ class DroneGameEnv(MiniGridEnv):
         size=20,
         agent_start_pos=(1, 10),
         agent_start_dir=0,
+        agent_dir_fixed=True,
         agent_view_size=3,
         max_steps: int | None = None,
         drone_options: List = [(13, 4), (13, 8), (13, 12), (13, 16)],
@@ -38,6 +39,7 @@ class DroneGameEnv(MiniGridEnv):
     ):
         self.agent_start_pos = agent_start_pos
         self.agent_start_dir = agent_start_dir
+        self.agent_dir_fixed = agent_dir_fixed
         self.agent_view_size = agent_view_size
         self.drone_options = drone_options
         self.num_divisions = num_divisions
@@ -104,7 +106,7 @@ class DroneGame(ParallelEnv):
         # grid_area = (env.width - 2) * (env.height - 2) # The outer are walls so -2
 
         # leader action: which of prescribed places to place drone
-        # follower action: fwd(0), left(1), right(2)
+        # follower action: fwd(0), bwd(1), left(2), right(3)
         self.action_spaces = {
             "leader": spaces.Discrete(len(self.env.drone_options)),
             "follower": spaces.Discrete(4),
@@ -161,13 +163,13 @@ class DroneGame(ParallelEnv):
             self.env.render()
             time.sleep(0.5)
 
-        print("Follower takes action")
+        print("\nFollower takes action")
         self.follower_act(actions["follower"])
         if not self.headless:
             self.env.render()
             time.sleep(0.5)
         observations["follower"] = self.get_follower_observation()
-        rewards["follower"] = -rewards["leader"] + self.env.height
+        rewards["follower"] = self.get_follower_reward()
 
         print(f"follower observation: {observations['follower']}")
         print(
@@ -198,23 +200,14 @@ class DroneGame(ParallelEnv):
         return int_number
 
     def get_leader_observation(self):
-        m = (
-            self.env.agent_pos[0] < self.env.width / 2,
-            self.env.agent_pos[1] < self.env.height / 2,
-        )
-        if m == (1, 1):
-            observation = 0
-        elif m == (1, 0):
-            observation = 1
-        elif m == (0, 1):
-            observation = 2
-        elif m == (0, 0):
-            observation = 3
+        
+        region_size = self.env.height / 4
+        observation = int(self.env.agent_pos[0] / region_size)
 
         return observation
 
     def get_leader_reward(self):
-        reward = self.env.height - 1 - self.env.agent_pos[0]
+        reward = self.env.height - 2 - self.env.agent_pos[0]
 
         if isinstance(
             self.env.grid.get(self.env.agent_pos[0], self.env.agent_pos[1]), Lava
@@ -238,16 +231,23 @@ class DroneGame(ParallelEnv):
                 self.env.step(self.env.actions.left)
                 self.env.render_mode = "human" if not self.headless else None
                 self.env.step(self.env.actions.forward)
+                if self.env.agent_dir_fixed:
+                    self.env.step(self.env.actions.right)
+                    self.env.step(self.env.actions.right)
             case 2:  # left
                 self.env.render_mode = None
                 self.env.step(self.env.actions.left)
                 self.env.render_mode = "human" if not self.headless else None
                 self.env.step(self.env.actions.forward)
+                if self.env.agent_dir_fixed:
+                    self.env.step(self.env.actions.right)
             case 3:  # right
                 self.env.render_mode = None
                 self.env.step(self.env.actions.right)
                 self.env.render_mode = "human" if not self.headless else None
                 self.env.step(self.env.actions.forward)
+                if self.env.agent_dir_fixed:
+                    self.env.step(self.env.actions.left)
 
     def get_follower_observation(self):
         topX, topY, botX, botY = self.env.get_view_exts()
@@ -268,6 +268,21 @@ class DroneGame(ParallelEnv):
         observation = self.binary_matrix_to_int(local_lava)
 
         return observation
+    
+    def get_follower_reward(self):
+        reward = self.env.agent_pos[0]
+
+        if isinstance(
+            self.env.grid.get(self.env.agent_pos[0], self.env.agent_pos[1]), Lava
+        ):
+            reward -= self.env.height
+
+        if isinstance(
+            self.env.grid.get(self.env.agent_pos[0], self.env.agent_pos[1]), Goal
+        ):
+            reward += self.env.height
+
+        return reward
 
 
 class Drone:
@@ -281,10 +296,10 @@ class Drone:
     def in_grid(self, point: Point2D = None):
         point = point or self.center
         return (
-            self.env.in_grid(self.center + Point2D(self.radius, self.radius))
-            and self.env.in_grid(self.center + Point2D(self.radius, -self.radius))
-            and self.env.in_grid(self.center + Point2D(-self.radius, self.radius))
-            and self.env.in_grid(self.center + Point2D(-self.radius, -self.radius))
+            self.env.in_grid(point + Point2D(self.radius, self.radius))
+            and self.env.in_grid(point + Point2D(self.radius, -self.radius))
+            and self.env.in_grid(point + Point2D(-self.radius, self.radius))
+            and self.env.in_grid(point + Point2D(-self.radius, -self.radius))
         )
 
     def fill_body(self, type):
@@ -320,19 +335,22 @@ class Drone:
 
         self.center = next_center
 
-    # def get_follower_reward(self):
-    #     pass
-
 
 if __name__ == "__main__":
-    env = DroneGameEnv(agent_start_pos=(3, 10))
+    env = DroneGameEnv(agent_start_pos=(3, 10),agent_dir_fixed=True)
     env = DroneGame(env=env)
+
+    follower_action_seq = [0,0,0,0,0,2,2,0,0,3,3,1,1,0,0,0,0]
 
     i = 0
     env.env.reset()
     while True:
         actions = {}
-        actions["follower"] = env.action_space("follower").sample()
+        # actions["follower"] = env.action_space("follower").sample()
+        if i < len(follower_action_seq):
+            actions["follower"] = follower_action_seq[i]
+        else:
+            actions["follower"] = 0
         actions["leader"] = i % 4
         observation, reward, terminated, _, _ = env.step(actions)
         if terminated:
