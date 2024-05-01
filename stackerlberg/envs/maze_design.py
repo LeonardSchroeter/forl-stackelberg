@@ -13,6 +13,7 @@ from gymnasium import spaces
 
 from pettingzoo import ParallelEnv
 
+
 class Maze(MiniGridEnv):
     def __init__(
         self,
@@ -22,7 +23,7 @@ class Maze(MiniGridEnv):
         agent_view_size=3,
         max_steps: int | None = None,
         **kwargs,
-    ): 
+    ):
         self.agent_start_pos = agent_start_pos
         self.agent_start_dir = agent_start_dir
         self.agent_view_size = agent_view_size
@@ -63,8 +64,8 @@ class Maze(MiniGridEnv):
 
         self.mission = "maze"
 
-class MazeDesign(ParallelEnv):
 
+class MazeDesign(ParallelEnv):
     metadata = {
         "name": "maze_design",
     }
@@ -80,11 +81,11 @@ class MazeDesign(ParallelEnv):
         self.agents = ["leader", "follower"]
 
         agent_view_area = env.agent_view_size * env.agent_view_size
-        grid_area = (env.width - 2) * (env.height - 2) # The outer are walls so -2
-        
+        grid_area = (env.width - 2) * (env.height - 2)  # The outer are walls so -2
+
         # design size: size (side length) of local area for leader to design at each timestep
         self.design_size = env.agent_view_size
-        self.design_area = self.design_size**2 - 1 # cannot place wall on agent
+        self.design_area = self.design_size**2 - 1  # cannot place wall on agent
 
         # leader action: whether each tile in the area to design is placed wall or not
         # follower action: rotate ccw(0), rotate cw(1), move forward(2)
@@ -96,7 +97,9 @@ class MazeDesign(ParallelEnv):
         # follower observation: local_goal_pos(-1 if not in agent's view), agent_dir, local_wall_occupancy
         self.observation_spaces = {
             "leader": spaces.MultiDiscrete([grid_area, 4, 2**grid_area]),
-            "follower": spaces.MultiDiscrete([agent_view_area + 1, 4, 2**(agent_view_area - 1)]),
+            "follower": spaces.MultiDiscrete(
+                [agent_view_area + 1, 4, 2 ** (agent_view_area - 1)]
+            ),
         }
 
     def action_space(self, agent: str) -> spaces.Space:
@@ -108,9 +111,8 @@ class MazeDesign(ParallelEnv):
     def reset(self):
         self.env.reset()
         return {"leader": 0, "follower": 0}
-    
+
     def step(self, actions):
-        
         print(f"\n STEP: {self.env.step_count}\n")
 
         observations, rewards = {}, {}
@@ -118,12 +120,12 @@ class MazeDesign(ParallelEnv):
         print("Leader takes action")
         self.leader_act(actions["leader"])
         # leader observation: agent_pos, agent_dir, wall_occupancy
-        observations["leader"] = self.get_leader_observation() 
+        observations["leader"] = self.get_leader_observation()
         rewards["leader"] = self.get_leader_reward()
 
-        print(f"leader observation: {observations["leader"]}")
-        print(f"global wall binary: {np.binary_repr(observations["leader"][-1])}")
-        print(f"leader reward: {rewards["leader"]}")
+        print(f"leader observation: {observations['leader']}")
+        print(f"global wall binary: {np.binary_repr(observations['leader'][-1])}")
+        print(f"leader reward: {rewards['leader']}")
 
         if not self.headless:
             self.env.render()
@@ -131,36 +133,44 @@ class MazeDesign(ParallelEnv):
 
         print("Follower takes action")
         # follower observation: local_goal_pos, agent_dir, local_wall_occupancy
-        observations["follower"], rewards["follower"] = self.follower_step(actions["follower"])
+        observations["follower"], rewards["follower"] = self.follower_step(
+            actions["follower"]
+        )
 
-        print(f"follower observation: {observations["follower"]}")
-        print(f"local wall binary: {np.binary_repr(observations["follower"][-1])}")
-        print(f"follower reward: {rewards["follower"]}")
+        print(f"follower observation: {observations['follower']}")
+        print(f"local wall binary: {np.binary_repr(observations['follower'][-1])}")
+        print(f"follower reward: {rewards['follower']}")
 
         if not self.headless:
             self.env.render()
             time.sleep(0.5)
-        
-        terminated = (self.env.step_count >= self.env.max_steps) or \
-        (self.env.agent_pos == self.env.goal_pos)
+
+        terminated = (self.env.step_count >= self.env.max_steps) or (
+            self.env.agent_pos == self.env.goal_pos
+        )
 
         print(f"terminated: {terminated}")
 
         return observations, rewards, terminated, {}, {}
 
     def in_grid(self, i, j):
-        if (i >= 1) and (i < self.env.width - 1) and (j >= 1) and (j < self.env.height - 1):
+        if (
+            (i >= 1)
+            and (i < self.env.width - 1)
+            and (j >= 1)
+            and (j < self.env.height - 1)
+        ):
             return True
         return False
 
     def leader_act(self, action):
-        
-        local_wall_design = np.reshape([int(bit) for bit in np.binary_repr(action, 
-                                width=self.design_area)][::-1], 
-                                newshape=(self.design_size, self.design_size))
-        
+        local_wall_design = np.reshape(
+            [int(bit) for bit in np.binary_repr(action, width=self.design_area)][::-1],
+            newshape=(self.design_size, self.design_size),
+        )
+
         topX, topY, botX, botY = self.env.get_view_exts()
-        
+
         for i in range(topX, botX):
             for j in range(topY, botY):
                 if self.in_grid(i, j):
@@ -175,26 +185,31 @@ class MazeDesign(ParallelEnv):
         return int_number
 
     def get_leader_observation(self):
-        wall_design = np.full((self.env.width - 2, self.env.height - 2),0)
+        wall_design = np.full((self.env.width - 2, self.env.height - 2), 0)
         for i in range(1, self.env.width - 1):
             for j in range(1, self.env.height - 1):
                 tile = self.env.grid.get(i, j)
                 if isinstance(tile, Wall):
                     wall_design[i - 1, j - 1] = 1
         wall_design_observation = self.binary_matrix_to_int(wall_design)
-        
-        observation = np.array([(self.env.agent_pos[1] - 1) * (self.env.width - 2) + \
-        (self.env.agent_pos[0] - 1), self.env.agent_dir, wall_design_observation])
+
+        observation = np.array(
+            [
+                (self.env.agent_pos[1] - 1) * (self.env.width - 2)
+                + (self.env.agent_pos[0] - 1),
+                self.env.agent_dir,
+                wall_design_observation,
+            ]
+        )
         return observation
-    
+
     def get_leader_reward(self):
-        
         open_set = [self.env.agent_pos]
         parents = {}
         g_score = {self.env.agent_pos: 0}
 
         while open_set:
-            curr_pos = min(open_set, key=lambda pos: g_score.get(pos, float('inf')))
+            curr_pos = min(open_set, key=lambda pos: g_score.get(pos, float("inf")))
 
             if curr_pos == self.env.goal_pos:
                 break
@@ -202,10 +217,11 @@ class MazeDesign(ParallelEnv):
             open_set.remove(curr_pos)
             for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
                 neighbor = (curr_pos[0] + dx, curr_pos[1] + dy)
-                if self.in_grid(neighbor[0], neighbor[1]) and \
-                   (not isinstance(self.env.grid.get(neighbor[0], neighbor[1]), Wall)):
+                if self.in_grid(neighbor[0], neighbor[1]) and (
+                    not isinstance(self.env.grid.get(neighbor[0], neighbor[1]), Wall)
+                ):
                     g_tentative = g_score[curr_pos] + 1
-                    if g_tentative < g_score.get(neighbor, float('inf')):
+                    if g_tentative < g_score.get(neighbor, float("inf")):
                         parents[neighbor] = curr_pos
                         g_score[neighbor] = g_tentative
                         if neighbor not in open_set:
@@ -220,45 +236,59 @@ class MazeDesign(ParallelEnv):
         self.env.path = path
         if self.env.goal_pos not in path:
             self.env.path = []
-            return - self.env.width * self.env.height
+            return -self.env.width * self.env.height
         reward = len(path)
-        if (self.env.step_count == self.env.max_steps) and \
-        (self.env.agent_pos != self.env.goal_pos):
-            reward -= (self.env.width + self.env.height)
+        if (self.env.step_count == self.env.max_steps) and (
+            self.env.agent_pos != self.env.goal_pos
+        ):
+            reward -= self.env.width + self.env.height
         return reward
 
     def follower_step(self, action):
         _, reward, _, _, _ = self.env.step(action)
 
         topX, topY, botX, botY = self.env.get_view_exts()
-        
+
         local_walls = np.full((self.env.agent_view_size, self.env.agent_view_size), 0)
         for i in range(topX, botX):
             for j in range(topY, botY):
                 i_local, j_local = self.env.relative_coords(i, j)
-                if not self.in_grid(i, j): # Out of grid map: deemed as walls
+                if not self.in_grid(i, j):  # Out of grid map: deemed as walls
                     local_walls[i_local, j_local] = 1
                 else:
                     tile = self.env.grid.get(i, j)
                     if isinstance(tile, Wall):
                         local_walls[i_local, j_local] = 1
-                
+
         wall_design_observation = self.binary_matrix_to_int(local_walls)
-        
-        local_goal_pos = self.env.relative_coords(self.env.goal_pos[0], self.env.goal_pos[1])
+
+        local_goal_pos = self.env.relative_coords(
+            self.env.goal_pos[0], self.env.goal_pos[1]
+        )
         if local_goal_pos is None:
             local_goal_pos_index = -1
         else:
-            local_goal_pos_index = local_goal_pos[1] * self.env.agent_view_size + local_goal_pos[0]
-        observation = np.array([local_goal_pos_index, self.env.agent_dir, wall_design_observation])
+            local_goal_pos_index = (
+                local_goal_pos[1] * self.env.agent_view_size + local_goal_pos[0]
+            )
+        observation = np.array(
+            [local_goal_pos_index, self.env.agent_dir, wall_design_observation]
+        )
 
         return observation, reward
 
+
 if __name__ == "__main__":
-    env = Maze(size=9, agent_start_pos=(1, 1), agent_start_dir=0, agent_view_size=3, max_steps=10)
+    env = Maze(
+        size=9,
+        agent_start_pos=(1, 1),
+        agent_start_dir=0,
+        agent_view_size=3,
+        max_steps=10,
+    )
     env = MazeDesign(env=env)
 
-    actions= {}
+    actions = {}
     actions["leader"] = 2**8
     actions["follower"] = 2
 
@@ -268,4 +298,3 @@ if __name__ == "__main__":
             observation, reward, terminated, _, _ = env.step(actions)
             if terminated:
                 break
-        
