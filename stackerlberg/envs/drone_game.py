@@ -114,7 +114,7 @@ class DroneGame(ParallelEnv):
         # leader observation: which division does the follower lie in
         # follower observation: wall occupancy in its local view size
         self.observation_spaces = {
-            "leader": spaces.Discrete(2**self.env.num_divisions),
+            "leader": spaces.Discrete(4),
             "follower": spaces.Discrete(2**agent_view_area),
         }
 
@@ -131,7 +131,9 @@ class DroneGame(ParallelEnv):
         return {"leader": 0, "follower": 0}
 
     def step(self, actions):
-        print(f"\n STEP: {self.env.step_count}\n")
+
+        if not self.headless:
+            print(f"\n STEP: {self.env.step_count}\n")
 
         observations, rewards = {}, {}
 
@@ -143,14 +145,16 @@ class DroneGame(ParallelEnv):
         # if not self.headless:
         #     self.env.render()
         #     time.sleep(0.5)
-
-        print("Leader takes action")
+        
+        if not self.headless:
+            print("Leader takes action")
         self.leader_act(actions["leader"])
         observations["leader"] = self.get_leader_observation()
         rewards["leader"] = self.get_leader_reward()
 
-        print(f"leader observation: {observations['leader']}")
-        print(f"leader reward: {rewards['leader']}")
+        if not self.headless:
+            print(f"leader observation: {observations['leader']}")
+            print(f"leader reward: {rewards['leader']}")
 
         for drone in self.drones:
             drone.undo_lava()
@@ -162,8 +166,8 @@ class DroneGame(ParallelEnv):
         if not self.headless:
             self.env.render()
             time.sleep(0.5)
+            print("\nFollower takes action")
 
-        print("\nFollower takes action")
         self.follower_act(actions["follower"])
         if not self.headless:
             self.env.render()
@@ -171,11 +175,12 @@ class DroneGame(ParallelEnv):
         observations["follower"] = self.get_follower_observation()
         rewards["follower"] = self.get_follower_reward()
 
-        print(f"follower observation: {observations['follower']}")
-        print(
-            f"follower observation binary: {np.binary_repr(observations['follower'])}"
-        )
-        print(f"follower reward: {rewards['follower']}")
+        if not self.headless:
+            print(f"follower observation: {observations['follower']}")
+            print(
+                f"follower observation binary: {np.binary_repr(observations['follower'])}"
+            )
+            print(f"follower reward: {rewards['follower']}")
 
         terminated = (
             (self.env.step_count >= self.env.max_steps)
@@ -185,9 +190,14 @@ class DroneGame(ParallelEnv):
             )
         )
 
-        print(f"terminated: {terminated}")
+        if not self.headless:
+            print(f"\nterminated: {terminated}")
 
-        return observations, rewards, terminated, {}, {}
+        terminated = {"leader": terminated, "follower": terminated}
+        truncated = {"leader": False, "follower": False}
+        info = {"leader": {}, "follower": {}}
+
+        return observations, rewards, terminated, truncated, info
 
     def leader_act(self, action):
         drone_place = self.env.drone_options[action]
@@ -353,6 +363,6 @@ if __name__ == "__main__":
             actions["follower"] = 0
         actions["leader"] = i % 4
         observation, reward, terminated, _, _ = env.step(actions)
-        if terminated:
+        if terminated["follower"]:
             break
         i += 1
