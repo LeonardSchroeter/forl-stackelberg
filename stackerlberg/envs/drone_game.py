@@ -228,7 +228,7 @@ class DroneGame(ParallelEnv):
         if isinstance(
             self.env.grid.get(self.env.agent_pos[0], self.env.agent_pos[1]), Lava
         ):
-            reward += self.env.height
+            reward += 5 * self.env.height
 
         # TODO: Do we even need this? The reward already scales by distance to the goal
         if isinstance(
