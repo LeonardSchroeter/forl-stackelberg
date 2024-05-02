@@ -114,8 +114,8 @@ class DroneGame(ParallelEnv):
         # leader observation: which division does the follower lie in
         # follower observation: wall occupancy in its local view size
         self.observation_spaces = {
-            "leader": spaces.Discrete(4),
-            "follower": spaces.Discrete(2**agent_view_area),
+            "leader": spaces.MultiBinary(self.env.num_divisions),
+            "follower": spaces.MultiDiscrete([4] * agent_view_area),
         }
 
         self.drones = []
@@ -131,7 +131,6 @@ class DroneGame(ParallelEnv):
         return {"leader": 0, "follower": 0}
 
     def step(self, actions):
-
         if not self.headless:
             print(f"\n STEP: {self.env.step_count}\n")
 
@@ -145,7 +144,7 @@ class DroneGame(ParallelEnv):
         # if not self.headless:
         #     self.env.render()
         #     time.sleep(0.5)
-        
+
         if not self.headless:
             print("Leader takes action")
         self.leader_act(actions["leader"])
@@ -177,9 +176,7 @@ class DroneGame(ParallelEnv):
 
         if not self.headless:
             print(f"follower observation: {observations['follower']}")
-            print(
-                f"follower observation binary: {np.binary_repr(observations['follower'])}"
-            )
+            print(f"follower observation binary: {observations['follower']}")
             print(f"follower reward: {rewards['follower']}")
 
         terminated = (
@@ -203,16 +200,22 @@ class DroneGame(ParallelEnv):
         drone_place = self.env.drone_options[action]
         self.drones.append(Drone(env=self.env, radius=1, center=drone_place))
 
-    def binary_matrix_to_int(self, binary_matrix: np.array):
-        binary_vec = binary_matrix.T.flatten()
-        binary_str = "".join(str(bit) for bit in binary_vec)[::-1]
-        int_number = int(binary_str, base=2)
-        return int_number
+    # def binary_matrix_to_int(self, binary_matrix: np.array):
+    #     binary_vec = binary_matrix.T.flatten()
+    #     binary_str = "".join(str(bit) for bit in binary_vec)[::-1]
+    #     int_number = int(binary_str, base=2)
+    #     return int_number
 
     def get_leader_observation(self):
-        
-        region_size = self.env.height / 4
-        observation = int(self.env.agent_pos[0] / region_size)
+        observation = np.zeros(self.env.num_divisions)
+
+        for drone in self.drones:
+            dists = [
+                drone.center.euclidean_distance(Point2D(i, j))
+                for i, j in self.env.drone_options
+            ]
+            index = np.argmin(dists)
+            observation[index] = 1
 
         return observation
 
@@ -224,6 +227,7 @@ class DroneGame(ParallelEnv):
         ):
             reward += self.env.height
 
+        # TODO: Do we even need this? The reward already scales by distance to the goal
         if isinstance(
             self.env.grid.get(self.env.agent_pos[0], self.env.agent_pos[1]), Goal
         ):
@@ -232,53 +236,48 @@ class DroneGame(ParallelEnv):
         return reward
 
     def follower_act(self, action):
+        self.env.render_mode = None
         match action:
             case 0:  # fwd
                 self.env.step(self.env.actions.forward)
             case 1:  # bwd
-                self.env.render_mode = None
                 self.env.step(self.env.actions.left)
                 self.env.step(self.env.actions.left)
-                self.env.render_mode = "human" if not self.headless else None
                 self.env.step(self.env.actions.forward)
                 if self.env.agent_dir_fixed:
                     self.env.step(self.env.actions.right)
                     self.env.step(self.env.actions.right)
             case 2:  # left
-                self.env.render_mode = None
                 self.env.step(self.env.actions.left)
-                self.env.render_mode = "human" if not self.headless else None
                 self.env.step(self.env.actions.forward)
                 if self.env.agent_dir_fixed:
                     self.env.step(self.env.actions.right)
             case 3:  # right
-                self.env.render_mode = None
                 self.env.step(self.env.actions.right)
-                self.env.render_mode = "human" if not self.headless else None
                 self.env.step(self.env.actions.forward)
                 if self.env.agent_dir_fixed:
                     self.env.step(self.env.actions.left)
+        self.env.render_mode = "human" if not self.headless else None
+        if not self.headless:
+            self.env.render()
 
     def get_follower_observation(self):
         topX, topY, botX, botY = self.env.get_view_exts()
 
-        local_lava = np.full((self.env.agent_view_size, self.env.agent_view_size), 0)
+        observation = np.zeros((self.env.agent_view_size, self.env.agent_view_size))
         for i in range(topX, botX):
             for j in range(topY, botY):
                 i_local, j_local = self.env.relative_coords(i, j)
-                if not self.env.in_grid(
-                    Point2D(i, j)
-                ):  # Out of grid map: deemed as lava (TODO: improve)
-                    local_lava[i_local, j_local] = 1
-                else:
-                    tile = self.env.grid.get(i, j)
-                    if isinstance(tile, Lava):
-                        local_lava[i_local, j_local] = 1
 
-        observation = self.binary_matrix_to_int(local_lava)
+                if not self.env.in_grid(Point2D(i, j)):
+                    observation[i_local, j_local] = 1
+                elif isinstance(self.env.grid.get(i, j), Lava):
+                    observation[i_local, j_local] = 2
+                elif isinstance(self.env.grid.get(i, j), Wall):
+                    observation[i_local, j_local] = 3
 
-        return observation
-    
+        return observation.flatten()
+
     def get_follower_reward(self):
         reward = self.env.agent_pos[0]
 
@@ -347,10 +346,10 @@ class Drone:
 
 
 if __name__ == "__main__":
-    env = DroneGameEnv(agent_start_pos=(3, 10),agent_dir_fixed=True)
+    env = DroneGameEnv(agent_start_pos=(3, 10), agent_dir_fixed=True)
     env = DroneGame(env=env)
 
-    follower_action_seq = [0,0,0,0,0,2,2,0,0,3,3,1,1,0,0,0,0]
+    follower_action_seq = [0, 0, 0, 0, 0, 2, 2, 0, 0, 3, 3, 1, 1, 0, 0, 0, 0]
 
     i = 0
     env.env.reset()
