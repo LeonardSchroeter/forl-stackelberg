@@ -128,7 +128,8 @@ class DroneGame(ParallelEnv):
 
     def reset(self):
         self.env.reset()
-        return {"leader": 0, "follower": 0}
+        return {"leader": np.zeros(self.env.num_divisions), 
+                "follower": np.zeros(self.env.agent_view_size * self.env.agent_view_size)}
 
     def step(self, actions):
         if not self.headless:

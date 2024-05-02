@@ -3,6 +3,8 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import numpy as np
+
 from pettingzoo.utils.wrappers import BaseParallelWrapper
 from gymnasium import spaces
 from gymnasium.spaces import Tuple
@@ -49,12 +51,18 @@ class FollowerWrapper(BaseParallelWrapper):
 
     def reset(self):
         obs = self.env.reset()
-        obs["follower"] = [obs["follower"], *self.leader_response]
+        if isinstance(obs["follower"], int):
+            obs["follower"] = [obs["follower"], *self.leader_response]
+        elif isinstance(obs["follower"], np.ndarray):
+            obs["follower"] = [*obs["follower"], *self.leader_response]
         return obs
 
     def step(self, actions):
         obs, rewards, terminated, truncated, infos = self.env.step(actions)
-        obs["follower"] = [obs["follower"], *self.leader_response]
+        if isinstance(obs["follower"], int):
+            obs["follower"] = [obs["follower"], *self.leader_response]
+        elif isinstance(obs["follower"], np.ndarray):
+            obs["follower"] = [*obs["follower"], *self.leader_response]
         return obs, rewards, terminated, truncated, infos
 
 

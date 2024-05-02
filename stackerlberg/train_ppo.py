@@ -36,7 +36,7 @@ def build_follower_env():
         max_steps = 2 * grid_size
         env = DroneGameEnv(size=grid_size, max_steps=max_steps)
         env = DroneGame(env=env, headless=args.headless)
-        env_follower = FollowerWrapper(env=env, num_queries=env.observation_space("leader").n)
+        env_follower = FollowerWrapper(env=env, num_queries=2**env.observation_space("leader").n)
     env_follower = SingleAgentFollowerWrapper(env_follower)
 
     return env_follower
@@ -74,9 +74,11 @@ def build_leader_env():
         max_steps = 2 * grid_size
         env = DroneGameEnv(size=grid_size, max_steps=max_steps)
         env = DroneGame(env=env, headless=args.headless)
-        env_leader = FollowerWrapper(env=env, num_queries=env.observation_space("leader").n)
+        num_queries = 2**env.observation_space("leader").n
+        env_leader = FollowerWrapper(env=env, num_queries=num_queries)
+        queries = [[int(bit) for bit in np.binary_repr(i, width=env.observation_space("leader").n)] for i in range(num_queries)]
         env_leader = SingleAgentLeaderWrapper(
-            env_leader, queries=np.arange(env.observation_space("leader").n), follower_model=follower_model
+            env_leader, queries=queries, follower_model=follower_model
         )
 
     return env_leader
