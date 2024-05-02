@@ -99,7 +99,6 @@ def build_leader_env(follower_model):
         env_leader,
         queries=[0, 1, 2, 3, 4],
         follower_model=follower_model,
-        initial_segment=False,
     )
 
     return env_leader
