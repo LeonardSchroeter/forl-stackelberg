@@ -34,35 +34,37 @@ class FollowerWrapper(BaseParallelWrapper):
         if agent == "leader":
             return self.env.observation_space(agent)
 
+        leader_context_dims = [
+            self.env.action_space("leader").n for _ in range(self.num_queries)
+        ]
+
         if isinstance(self.env.observation_space(agent), spaces.Discrete):
-            return spaces.MultiDiscrete(
-                [
-                    self.env.observation_space(agent).n,
-                    *[
-                        self.env.action_space("leader").n
-                        for _ in range(self.num_queries)
-                    ],
-                ]
-            )
+            original_dims = [self.env.observation_space(agent).n]
         elif isinstance(self.env.observation_space(agent), spaces.MultiDiscrete):
-            return spaces.MultiDiscrete(
-                [
-                    *self.env.observation_space(agent).nvec,
-                    *[
-                        self.env.action_space("leader").n
-                        for _ in range(self.num_queries)
-                    ],
-                ]
-            )
+            original_dims = self.env.observation_space(agent).nvec
+        elif isinstance(self.env.observation_space(agent), spaces.MultiBinary):
+            original_dims = [2] * self.env.observation_space(agent).n
+
+        return spaces.MultiDiscrete([*original_dims, *leader_context_dims])
 
     def reset(self):
         obs = self.env.reset()
-        obs["follower"] = [obs["follower"], *self.leader_response]
+        if isinstance(obs["follower"], np.ndarray):
+            obs["follower"] = np.concatenate(
+                (obs["follower"], np.array(self.leader_response))
+            )
+        else:
+            obs["follower"] = np.array([obs["follower"], *self.leader_response])
         return obs
 
     def step(self, actions):
         obs, rewards, terminated, truncated, infos = self.env.step(actions)
-        obs["follower"] = [obs["follower"], *self.leader_response]
+        if isinstance(obs["follower"], np.ndarray):
+            obs["follower"] = np.concatenate(
+                (obs["follower"], np.array(self.leader_response))
+            )
+        else:
+            obs["follower"] = np.array([obs["follower"], *self.leader_response])
         return obs, rewards, terminated, truncated, infos
 
 

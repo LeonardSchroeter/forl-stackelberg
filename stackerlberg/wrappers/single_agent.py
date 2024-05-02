@@ -7,7 +7,6 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from follower import FollowerWrapper
-from util.one_hot import one_hot_to_discrete
 
 
 # Wraps a multi-agent environment to a single-agent environment from the follower's perspective
@@ -44,7 +43,7 @@ class SingleAgentFollowerWrapper(gym.Env):
     def step(self, action):
         actions = {
             "follower": action,
-            "leader": self.leader_response[one_hot_to_discrete(self.last_leader_obs)],
+            "leader": self.leader_response[self.last_leader_obs],
         }
         obs, reward, term, trunc, info = self.env.step(actions)
         self.last_leader_obs = obs["leader"]
@@ -211,6 +210,7 @@ class LeaderWrapperNoInitialSegment(gym.Env):
         leader_model=None,
         follower_epsilon_greedy: bool = False,
         epsilon: float = 0.1,
+        random_follower_policy_prob: float = 0.0,
     ):
         self.env = env
         self.queries = queries
@@ -218,8 +218,10 @@ class LeaderWrapperNoInitialSegment(gym.Env):
         self.leader_model = leader_model
         self.follower_epsilon_greedy = follower_epsilon_greedy
         self.epsilon = epsilon
+        self.random_follower_policy_prob = random_follower_policy_prob
 
         self.last_follower_obs = None
+        self.follower_policy = None
 
         self.action_space = env.action_space("leader")
         self.observation_space = env.observation_space("leader")
@@ -228,6 +230,9 @@ class LeaderWrapperNoInitialSegment(gym.Env):
         self.leader_model = leader_model
 
     def _get_next_follower_action(self):
+        if self.follower_policy is not None:
+            return self.follower_policy[self.last_follower_obs[0]]
+
         if self.follower_epsilon_greedy and np.random.rand() < self.epsilon:
             return self.env.action_space("follower").sample()
         else:
@@ -237,6 +242,16 @@ class LeaderWrapperNoInitialSegment(gym.Env):
             return follower_action
 
     def reset(self, seed=None, options=None):
+        if (
+            self.random_follower_policy_prob > 0
+            and np.random.rand() < self.random_follower_policy_prob
+        ):
+            self.follower_policy = [
+                self.env.action_space("follower").sample() for _ in range(5)
+            ]
+        else:
+            self.follower_policy = None
+
         leader_response = [
             self.leader_model.predict(query)[0] for query in self.queries
         ]

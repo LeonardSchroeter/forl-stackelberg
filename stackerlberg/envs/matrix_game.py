@@ -4,8 +4,6 @@ import numpy as np
 from gymnasium import spaces
 from pettingzoo import ParallelEnv
 
-from util.one_hot import discrete_to_one_hot
-
 named_matrix_games = {
     "prisoners_dilemma": [
         [[3, 3], [1, 4]],
@@ -94,8 +92,8 @@ class IteratedMatrixGame(ParallelEnv):
             "follower": spaces.Discrete(2),
         }
         self.observation_spaces = {
-            "leader": spaces.MultiBinary(memory * 2 + 1),
-            "follower": spaces.MultiBinary(memory * 2 + 1),
+            "leader": spaces.Discrete(memory * 2 + 1),
+            "follower": spaces.Discrete(memory * 2 + 1),
         }
 
         self.episode_length = episode_length
@@ -110,7 +108,7 @@ class IteratedMatrixGame(ParallelEnv):
 
     def reset(self):
         self.current_step = 0
-        obs = discrete_to_one_hot(0, self.observation_space("leader").n)
+        obs = 0
         return {"leader": obs, "follower": obs}
 
     def step(self, actions):
@@ -148,14 +146,6 @@ class IteratedMatrixGame(ParallelEnv):
         terminated = {"leader": term, "follower": term}
         truncated = {"leader": False, "follower": False}
         info = {"leader": {}, "follower": {}}
-        obs = {
-            "leader": discrete_to_one_hot(
-                obs["leader"], self.observation_space("leader").n
-            ),
-            "follower": discrete_to_one_hot(
-                obs["follower"], self.observation_space("follower").n
-            ),
-        }
 
         return obs, rewards, terminated, truncated, info
 
