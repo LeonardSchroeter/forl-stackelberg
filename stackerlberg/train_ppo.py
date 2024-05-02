@@ -20,8 +20,10 @@ parser.add_argument("--env",
 help="choose you environment: matgame, dronegame")
 parser.add_argument("--headless", help="disable GUI", action="store_true")
 parser.add_argument("--pretrain", action="store_true")
+parser.add_argument("--resume_pretrain", action="store_true")
 parser.add_argument("--testpretrain", action="store_true")
 parser.add_argument("--train", action="store_true")
+parser.add_argument("--resume_train", action="store_true")
 parser.add_argument("--testtrain", action="store_true")
 args = parser.parse_args()
 
@@ -44,8 +46,11 @@ def build_follower_env():
 def pretrain(env):
     
     run_follower = wandb.init(project="stackerlberg-follower", sync_tensorboard=True)
-    model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=f"runs/{run_follower.id}")
-    model.learn(total_timesteps=50_000, callback=WandbCallback(gradient_save_freq=100, verbose=2))
+    if args.resume_pretrain:
+        model = PPO.load(f"checkpoints/follower_ppo_{args.env}")
+    else:
+        model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=f"runs/{run_follower.id}")
+    model.learn(total_timesteps=150_000, callback=WandbCallback(gradient_save_freq=100, verbose=2))
     model.save(f"checkpoints/follower_ppo_{args.env}")
 
 def test_pretrain():
@@ -86,8 +91,11 @@ def build_leader_env():
 def train(env_leader):
 
     run_leader = wandb.init(project="stackerlberg-leader", sync_tensorboard=True)
-    leader_model = PPO("MlpPolicy", env_leader, verbose=1, tensorboard_log=f"runs/{run_leader.id}")
-    leader_model.learn(total_timesteps=50_000, callback=WandbCallback(gradient_save_freq=100, verbose=2))
+    if args.resume_train:
+        leader_model = PPO.load(f"checkpoints/leader_ppo_{args.env}")
+    else:
+        leader_model = PPO("MlpPolicy", env_leader, verbose=1, tensorboard_log=f"runs/{run_leader.id}")
+    leader_model.learn(total_timesteps=200_000, callback=WandbCallback(gradient_save_freq=100, verbose=2))
     leader_model.save(f"checkpoints/leader_ppo_{args.env}")
 
 def test_train(env_leader):

@@ -27,7 +27,7 @@ class DroneGameEnv(MiniGridEnv):
     def __init__(
         self,
         size=20,
-        agent_start_pos=(1, 10),
+        agent_start_pos=None,
         agent_start_dir=0,
         agent_dir_fixed=True,
         agent_view_size=3,
@@ -37,6 +37,8 @@ class DroneGameEnv(MiniGridEnv):
         drone_cover_size=3,
         **kwargs,
     ):
+        if agent_start_pos is None:
+            self.agent_start_pos = (np.random.rand(int(size*0.7)), np.random.rand(size))
         self.agent_start_pos = agent_start_pos
         self.agent_start_dir = agent_start_dir
         self.agent_dir_fixed = agent_dir_fixed
