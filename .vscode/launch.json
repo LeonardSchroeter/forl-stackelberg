@@ -5,11 +5,28 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Tabular Q-learning",
+            "name": "Q matgame",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/stackerlberg/train.py",
             "console": "integratedTerminal",
+            "args": ["--env",
+                    "matgame"]             
+        },
+        {
+            "name": "Q Drone",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/stackerlberg/train.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--headless",
+                    // "--pretrain",
+                    // "--train",
+                    "--test_train",
+                    "--env",
+                    "dronegame",
+                    ]
         },
         {
             "name": "PPO Drone",
@@ -19,12 +36,12 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": ["--headless",
-                    "--pretrain",
+                    // "--pretrain",
                     // "--resume_pretrain",
-                    "--testpretrain",
-                    "--train",
+                    // "--test_pretrain",
+                    // "--train",
                     // "--resume_train",
-                    "--testtrain",
+                    "--test_train",
                     "--env",
                     "dronegame",
                     ]

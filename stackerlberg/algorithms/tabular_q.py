@@ -82,7 +82,7 @@ class TabularQ:
         for state, action, reward, next_state in trajectory:
             self.update_q(state, action, reward, next_state)
 
-    def print_policy(self):
+    def print_policy_matgame(self):
         for j in range(32):
             j_bits = [int(x) for x in list(np.binary_repr(j, width=5))]
             response = []
