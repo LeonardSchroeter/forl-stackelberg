@@ -38,8 +38,9 @@ class DroneGameEnv(MiniGridEnv):
         **kwargs,
     ):
         if agent_start_pos is None:
-            self.agent_start_pos = (np.random.rand(int(size*0.7)), np.random.rand(size))
-        self.agent_start_pos = agent_start_pos
+            self.agent_start_pos = (np.random.randint(1, min(int(0.7 * size), size - 1)), np.random.randint(1, size - 1))
+        else:
+            self.agent_start_pos = agent_start_pos
         self.agent_start_dir = agent_start_dir
         self.agent_dir_fixed = agent_dir_fixed
         self.agent_view_size = agent_view_size
@@ -74,11 +75,11 @@ class DroneGameEnv(MiniGridEnv):
         for j in range(1, self.width - 1):
             self.put_obj(Goal(), self.height - 2, j)
 
-        if self.agent_start_pos is not None:
-            self.agent_pos = self.agent_start_pos
-            self.agent_dir = self.agent_start_dir
-        else:
-            self.place_agent()
+        # if self.agent_start_pos is not None:
+        self.agent_pos = self.agent_start_pos
+        self.agent_dir = self.agent_start_dir
+        # else:
+        #     self.place_agent()
 
         self.mission = "drone game"
 
@@ -149,7 +150,7 @@ class DroneGame(ParallelEnv):
         #     time.sleep(0.5)
 
         if not self.headless:
-            print("Leader takes action")
+            print(f"Leader takes action {actions['leader']}")
         self.leader_act(actions["leader"])
         observations["leader"] = self.get_leader_observation()
         rewards["leader"] = self.get_leader_reward()
@@ -168,7 +169,7 @@ class DroneGame(ParallelEnv):
         if not self.headless:
             self.env.render()
             time.sleep(0.5)
-            print("\nFollower takes action")
+            print(f"\nFollower takes action {actions['follower']}")
 
         self.follower_act(actions["follower"])
         if not self.headless:
@@ -349,7 +350,8 @@ class Drone:
 
 
 if __name__ == "__main__":
-    env = DroneGameEnv(agent_start_pos=(3, 10), agent_dir_fixed=True)
+    # env = DroneGameEnv(agent_start_pos=(3, 10), agent_dir_fixed=True)
+    env = DroneGameEnv(agent_dir_fixed=True,agent_start_dir=3)
     env = DroneGame(env=env)
 
     follower_action_seq = [0, 0, 0, 0, 0, 2, 2, 0, 0, 3, 3, 1, 1, 0, 0, 0, 0]
@@ -368,3 +370,4 @@ if __name__ == "__main__":
         if terminated["follower"]:
             break
         i += 1
+        print(env.env.agent_dir)
