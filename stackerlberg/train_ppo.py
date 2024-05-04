@@ -19,12 +19,13 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--env", 
 help="choose you environment: matgame, dronegame")
 parser.add_argument("--headless", help="disable GUI", action="store_true")
+parser.add_argument("--verbose", help="anable outputs", action="store_true")
 parser.add_argument("--pretrain", action="store_true")
 parser.add_argument("--resume_pretrain", action="store_true")
-parser.add_argument("--testpretrain", action="store_true")
+parser.add_argument("--test_pretrain", action="store_true")
 parser.add_argument("--train", action="store_true")
 parser.add_argument("--resume_train", action="store_true")
-parser.add_argument("--testtrain", action="store_true")
+parser.add_argument("--test_train", action="store_true")
 args = parser.parse_args()
 
 def build_follower_env():
@@ -36,7 +37,7 @@ def build_follower_env():
     elif args.env == "dronegame":
         grid_size = 20
         max_steps = 2 * grid_size
-        env = DroneGameEnv(size=grid_size, max_steps=max_steps)
+        env = DroneGameEnv(size=grid_size, max_steps=max_steps, agent_start_pos=(3,10))
         env = DroneGame(env=env, headless=args.headless)
         env_follower = FollowerWrapper(env=env, num_queries=2**env.observation_space("leader").n)
     env_follower = SingleAgentFollowerWrapper(env_follower)
@@ -47,13 +48,13 @@ def pretrain(env):
     
     run_follower = wandb.init(project="stackerlberg-follower", sync_tensorboard=True)
     if args.resume_pretrain:
-        model = PPO.load(f"checkpoints/follower_ppo_{args.env}")
+        model = PPO.load(f"checkpoints/follower_ppo_{args.env}",env=env)
     else:
         model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=f"runs/{run_follower.id}")
-    model.learn(total_timesteps=150_000, callback=WandbCallback(gradient_save_freq=100, verbose=2))
+    model.learn(total_timesteps=1000_000, callback=WandbCallback(gradient_save_freq=100, verbose=2))
     model.save(f"checkpoints/follower_ppo_{args.env}")
 
-def test_pretrain():
+def test_pretrain(env):
     model = PPO.load(f"checkpoints/follower_ppo_{args.env}")
     if args.env == "matgame":
         for response in [[1,1,1,1,1], [0,0,0,0,0], [0,0,0,1,1]]:
@@ -61,8 +62,21 @@ def test_pretrain():
                 obs = [s, *response]
                 action = model.predict(obs, deterministic=True)[0]
                 print(f"state: {s}, context: {response}, action: {action}")
-    else:
-        pass
+    elif args.env == "dronegame":
+        env.env.env.headless = False
+        env.env.env.verbose = True
+        # leader_response = np.full((16,),1,dtype=int)
+        leader_response = np.array([0,3,3,0,3,0,3,0,0,3,0,3,0,3,0,3],dtype=int)
+        obs, _ = env.reset(leader_response=leader_response)
+        while True:
+            action = model.predict(obs, deterministic=True)[0]
+            new_obs, rewards, terminated, truncated, _ = env.step(action)
+            print(obs, action, rewards)
+            obs = new_obs
+
+            if terminated or truncated:
+                break
+        
 
 def build_leader_env():
     follower_model = PPO.load(f"checkpoints/follower_ppo_{args.env}")
@@ -77,7 +91,7 @@ def build_leader_env():
     else:
         grid_size = 20
         max_steps = 2 * grid_size
-        env = DroneGameEnv(size=grid_size, max_steps=max_steps)
+        env = DroneGameEnv(size=grid_size, max_steps=max_steps, agent_start_pos=(3,10))
         env = DroneGame(env=env, headless=args.headless)
         num_queries = 2**env.observation_space("leader").n
         env_leader = FollowerWrapper(env=env, num_queries=num_queries)
@@ -104,6 +118,7 @@ def test_train(env_leader):
 
     if args.env != "matgame":
         env_leader.env.env.headless = False
+        env_leader.env.env.verbose = True
 
      # play a single episode to check learned leader and follower policies
     obs, _ = env_leader.reset()
@@ -116,19 +131,27 @@ def test_train(env_leader):
         if terminated or truncated:
             break
 
+def print_policy():
+    leader_model = PPO.load(f"checkpoints/leader_ppo_{args.env}")
+    for o in range(16):
+        o_bin = [int(bit) for bit in np.binary_repr(o, 4)]
+        action = leader_model.predict(o_bin, deterministic=True)[0]
+        print(f"obs: {o_bin}, act: {action}")
+
 if __name__ == "__main__":
 
     follower_env = build_follower_env()
     if args.pretrain:
         pretrain(env=follower_env)
-    if args.testpretrain:
-        test_pretrain()
+    if args.test_pretrain:
+        test_pretrain(env=follower_env)
 
     leader_env = build_leader_env()
     if args.train:
         train(env_leader=leader_env)
-    if args.testtrain:
-        test_train(env_leader=leader_env)
+    if args.test_train:
+        # test_train(env_leader=leader_env)
+        print_policy()
     
 
     

@@ -15,10 +15,13 @@ class SingleAgentFollowerWrapper(gym.Env):
                 for _ in range(self.env.observation_space("leader").n)
             ]
         elif isinstance(self.env.observation_space("leader"), spaces.MultiBinary):
-            leader_policy = leader_response or [
-                self.env.action_space("leader").sample()
-                for _ in range(2**self.env.observation_space("leader").n)
-            ]
+            if leader_response is not None:
+                leader_policy = leader_response
+            else:
+                leader_policy = [
+                    self.env.action_space("leader").sample()
+                    for _ in range(2**self.env.observation_space("leader").n)
+                ]
         self.env.set_leader_response(leader_policy)
         obs = self.env.reset()
         self.last_leader_obs = obs["leader"]
