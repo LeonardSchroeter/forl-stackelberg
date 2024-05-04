@@ -121,7 +121,7 @@ class DroneGame(ParallelEnv):
         # follower observation: wall occupancy in its local view size
         self.observation_spaces = {
             "leader": spaces.MultiBinary(self.env.num_divisions),
-            "follower": spaces.MultiDiscrete([4] * agent_view_area),
+            "follower": spaces.MultiDiscrete([self.env.height, *([4] * agent_view_area)]),
         }
 
         self.drones = []
@@ -135,7 +135,7 @@ class DroneGame(ParallelEnv):
     def reset(self):
         self.env.reset()
         return {"leader": np.zeros(self.env.num_divisions), 
-                "follower": np.zeros(self.env.agent_view_size * self.env.agent_view_size)}
+                "follower": np.zeros(1 + self.env.agent_view_size * self.env.agent_view_size)}
 
     def step(self, actions):
 
@@ -268,7 +268,7 @@ class DroneGame(ParallelEnv):
                 elif isinstance(self.env.grid.get(i, j), Wall):
                     observation[i_local, j_local] = 3
 
-        return observation.flatten()
+        return np.insert(observation.flatten(), 0, self.env.agent_pos[1])
 
 
 class Drone:

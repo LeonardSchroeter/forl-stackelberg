@@ -14,6 +14,8 @@ from wrappers.follower import FollowerWrapper
 import wandb
 from wandb.integration.sb3 import WandbCallback
 
+run = wandb.init(project="forl-stackerlberg", sync_tensorboard=True)
+
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--env", 
@@ -35,9 +37,7 @@ def build_follower_env():
             num_queries=5,
         )   
     elif args.env == "dronegame":
-        grid_size = 20
-        max_steps = 2 * grid_size
-        env = DroneGameEnv(size=grid_size, max_steps=max_steps, agent_start_pos=(3,10))
+        env = DroneGameEnv(agent_start_pos=(1,10))
         env = DroneGame(env=env, headless=args.headless)
         env_follower = FollowerWrapper(env=env, num_queries=2**env.observation_space("leader").n)
     env_follower = SingleAgentFollowerWrapper(env_follower)
@@ -46,12 +46,11 @@ def build_follower_env():
 
 def pretrain(env):
     
-    run_follower = wandb.init(project="stackerlberg-follower", sync_tensorboard=True)
     if args.resume_pretrain:
         model = PPO.load(f"checkpoints/follower_ppo_{args.env}",env=env)
     else:
-        model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=f"runs/{run_follower.id}")
-    model.learn(total_timesteps=1000_000, callback=WandbCallback(gradient_save_freq=100, verbose=2))
+        model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=f"runs/{run.id}")
+    model.learn(total_timesteps=200_000, callback=WandbCallback(gradient_save_freq=100, verbose=2))
     model.save(f"checkpoints/follower_ppo_{args.env}")
 
 def test_pretrain(env):
@@ -65,7 +64,7 @@ def test_pretrain(env):
     elif args.env == "dronegame":
         env.env.env.headless = False
         env.env.env.verbose = True
-        # leader_response = np.full((16,),1,dtype=int)
+        # leader_response = np.full((16,),3,dtype=int)
         leader_response = np.array([0,3,3,0,3,0,3,0,0,3,0,3,0,3,0,3],dtype=int)
         obs, _ = env.reset(leader_response=leader_response)
         while True:
@@ -89,9 +88,7 @@ def build_leader_env():
         env_leader, queries=[0, 1, 2, 3, 4], follower_model=follower_model
     )
     else:
-        grid_size = 20
-        max_steps = 2 * grid_size
-        env = DroneGameEnv(size=grid_size, max_steps=max_steps, agent_start_pos=(3,10))
+        env = DroneGameEnv(agent_start_pos=(1,10))
         env = DroneGame(env=env, headless=args.headless)
         num_queries = 2**env.observation_space("leader").n
         env_leader = FollowerWrapper(env=env, num_queries=num_queries)
@@ -104,11 +101,10 @@ def build_leader_env():
 
 def train(env_leader):
 
-    run_leader = wandb.init(project="stackerlberg-leader", sync_tensorboard=True)
     if args.resume_train:
         leader_model = PPO.load(f"checkpoints/leader_ppo_{args.env}")
     else:
-        leader_model = PPO("MlpPolicy", env_leader, verbose=1, tensorboard_log=f"runs/{run_leader.id}")
+        leader_model = PPO("MlpPolicy", env_leader, verbose=1, tensorboard_log=f"runs/{run.id}")
     leader_model.learn(total_timesteps=200_000, callback=WandbCallback(gradient_save_freq=100, verbose=2))
     leader_model.save(f"checkpoints/leader_ppo_{args.env}")
 
@@ -150,7 +146,7 @@ if __name__ == "__main__":
     if args.train:
         train(env_leader=leader_env)
     if args.test_train:
-        # test_train(env_leader=leader_env)
+        test_train(env_leader=leader_env)
         print_policy()
     
 
