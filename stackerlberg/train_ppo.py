@@ -15,7 +15,6 @@ from wrappers.single_agent import (
 from wrappers.follower import FollowerWrapper
 
 
-run = wandb.init(project="forl-stackerlberg", sync_tensorboard=True, mode="disabled")
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--env", help="choose you environment: matgame, dronegame")
@@ -29,6 +28,8 @@ parser.add_argument("--resume_train", action="store_true")
 parser.add_argument("--test_train", action="store_true")
 args = parser.parse_args()
 
+if args.pretrain or args.train:
+    run = wandb.init(project="forl-stackerlberg", sync_tensorboard=True)
 
 def build_follower_env():
     if args.env == "matgame":
