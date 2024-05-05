@@ -40,7 +40,10 @@ class DroneGameEnv(MiniGridEnv):
         **kwargs,
     ):
         if agent_start_pos is None:
-            self.agent_start_pos = (np.random.randint(1, min(int(0.7 * size), size - 1)), np.random.randint(1, size - 1))
+            self.agent_start_pos = (
+                np.random.randint(1, min(int(0.7 * size), size - 1)),
+                np.random.randint(1, size - 1),
+            )
         else:
             self.agent_start_pos = agent_start_pos
         self.agent_start_dir = agent_start_dir
@@ -97,7 +100,9 @@ class DroneGame(ParallelEnv):
         "name": "drone_game",
     }
 
-    def __init__(self, env: DroneGameEnv, headless: bool = False, verbose: bool = False) -> None:
+    def __init__(
+        self, env: DroneGameEnv, headless: bool = False, verbose: bool = False
+    ) -> None:
         super().__init__()
 
         self.env = env
@@ -121,7 +126,9 @@ class DroneGame(ParallelEnv):
         # follower observation: wall occupancy in its local view size
         self.observation_spaces = {
             "leader": spaces.MultiBinary(self.env.num_divisions),
-            "follower": spaces.MultiDiscrete([self.env.height, *([4] * agent_view_area)]),
+            "follower": spaces.MultiDiscrete(
+                [self.env.height, *([4] * agent_view_area)]
+            ),
         }
 
         self.drones = []
@@ -134,77 +141,58 @@ class DroneGame(ParallelEnv):
 
     def reset(self):
         self.env.reset()
-        return {"leader": np.zeros(self.env.num_divisions), 
-                "follower": np.zeros(1 + self.env.agent_view_size * self.env.agent_view_size)}
+        return {
+            "leader": np.zeros(self.env.num_divisions),
+            "follower": np.zeros(
+                1 + self.env.agent_view_size * self.env.agent_view_size
+            ),
+        }
 
     def step(self, actions):
-
-        if self.verbose:
-            print(f"\n STEP: {self.env.step_count}\n")
+        self.transition_drones()
+        self.leader_act(actions["leader"])
+        self.follower_act(actions["follower"])
 
         observations, rewards = {}, {}
-
-        if len(self.drones) >= 4:
-            dead_drone = self.drones.pop(0)
-            dead_drone.undo_lava()
-            del dead_drone
-
-        # if not self.headless:
-        #     self.env.render()
-        #     time.sleep(0.5)
-
         observations["leader"] = self.get_leader_observation()
-
-        if self.verbose:
-            print(f"Leader takes action {actions['leader']}")
-            
-        self.leader_act(actions["leader"])
-
-        if self.verbose:
-            print(f"leader observation: {observations['leader']}")
-            
-
-        # if not self.headless:
-        #     self.env.render()
-        #     time.sleep(0.5)
-        if self.verbose:
-            print(f"\nFollower takes action {actions['follower']}")
-
-        self.follower_act(actions["follower"])
-        if not self.headless:
-            self.env.render()
-            time.sleep(1.0)
         observations["follower"] = self.get_follower_observation()
         rewards["leader"] = self.get_leader_reward()
         rewards["follower"] = -rewards["leader"]
 
+        terminated = (self.env.agent_pos[0] == self.env.height - 2) or isinstance(
+            self.env.grid.get(self.env.agent_pos[0], self.env.agent_pos[1]), LavaColored
+        )
+        terminated = {"leader": terminated, "follower": terminated}
+        truncated = {"leader": False, "follower": False}
+        info = {"leader": {}, "follower": {}}
+
         if self.verbose:
+            print(f"\n STEP: {self.env.step_count}\n")
+            print(f"\nterminated: {terminated}")
+            print(f"Leader takes action {actions['leader']}")
+            print(f"leader observation: {observations['leader']}")
+            print(f"\nFollower takes action {actions['follower']}")
             print(f"follower observation: {observations['follower']}")
             print(f"follower observation binary: {observations['follower']}")
             print(f"follower reward: {rewards['follower']}")
             print(f"leader reward: {rewards['leader']}")
 
-        terminated = (
-            (self.env.agent_pos[0] == self.env.height - 2) \
-            or isinstance(
-                self.env.grid.get(self.env.agent_pos[0], self.env.agent_pos[1]), LavaColored
-            )
-        )
-
-        if self.verbose:
-            print(f"\nterminated: {terminated}")
-
-        terminated = {"leader": terminated, "follower": terminated}
-        truncated = {"leader": False, "follower": False}
-        info = {"leader": {}, "follower": {}}
+        if not self.headless:
+            self.env.render()
+            time.sleep(1.0)
 
         return observations, rewards, terminated, truncated, info
 
     def leader_act(self, action):
-        
         drone_place = self.env.drone_options[action]
         self.drones.append(Drone(env=self.env, radius=1, center=drone_place))
-        
+
+    def transition_drones(self):
+        if len(self.drones) >= 4:
+            dead_drone = self.drones.pop(0)
+            dead_drone.undo_lava()
+            del dead_drone
+
         for drone in self.drones:
             drone.undo_lava()
         for drone in self.drones:
@@ -226,12 +214,11 @@ class DroneGame(ParallelEnv):
         return observation
 
     def get_leader_reward(self):
-
         if isinstance(
             self.env.grid.get(self.env.agent_pos[0], self.env.agent_pos[1]), LavaColored
         ):
             return 5 * self.env.height
-        
+
         return 0
 
     def follower_act(self, action):
@@ -278,6 +265,7 @@ class Drone:
         self.center = Point2D(*center)
         self.env = env
         self.age = 0
+        self.set_lava()
 
     def in_grid(self, point: Point2D = None):
         point = point or self.center
@@ -304,13 +292,12 @@ class Drone:
                         self.env.put_obj(type, i, j)
 
     def set_lava(self):
-        self.fill_body(LavaColored(self.age <= 1))
+        self.fill_body(LavaColored(self.age <= 0))
 
     def undo_lava(self):
         self.fill_body(None)
 
     def brownian_motion(self):
-        
         self.age += 1
         dirs = [(0, 1), (0, -1), (-1, 0), (1, 0)]
         dirs = list(filter(lambda x: self.in_grid(self.center + Point2D(*x)), dirs))
@@ -324,8 +311,8 @@ class Drone:
 
 if __name__ == "__main__":
     # env = DroneGameEnv(agent_start_pos=(3, 10), agent_dir_fixed=True)
-    env = DroneGameEnv(agent_start_pos=(3, 10), agent_dir_fixed=True,agent_start_dir=0)
-    env = DroneGame(env=env,verbose=True)
+    env = DroneGameEnv(agent_start_pos=(1, 10), agent_dir_fixed=True, agent_start_dir=0)
+    env = DroneGame(env=env, verbose=True)
 
     follower_action_seq = [0, 0, 0, 0, 0, 2, 2, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0]
 
