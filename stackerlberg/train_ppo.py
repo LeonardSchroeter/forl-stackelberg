@@ -15,7 +15,6 @@ from wrappers.single_agent import (
 from wrappers.follower import FollowerWrapper
 
 
-run = wandb.init(project="forl-stackerlberg", sync_tensorboard=True, mode="disabled")
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--env", help="choose you environment: matgame, dronegame")
@@ -29,6 +28,8 @@ parser.add_argument("--resume_train", action="store_true")
 parser.add_argument("--test_train", action="store_true")
 args = parser.parse_args()
 
+if args.pretrain or args.train:
+    run = wandb.init(project="forl-stackerlberg", sync_tensorboard=True)
 
 def build_follower_env():
     if args.env == "matgame":
@@ -128,6 +129,7 @@ def train(env_leader):
         leader_model = PPO(
             "MlpPolicy", env_leader, verbose=1, tensorboard_log=f"runs/{run.id}"
         )
+    env_leader.set_leader_response(leader_model)
     leader_model.learn(
         total_timesteps=200_000,
         callback=WandbCallback(gradient_save_freq=100, verbose=2),
@@ -137,6 +139,8 @@ def train(env_leader):
 
 def test_train(env_leader):
     leader_model = PPO.load(f"checkpoints/leader_ppo_{args.env}")
+    if not env_leader.leader_response:
+        env_leader.set_leader_response(leader_model)
 
     if args.env != "matgame":
         env_leader.env.env.headless = False
