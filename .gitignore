@@ -10,3 +10,4 @@ checkpoints*/
 runs/
 minigrid/
 tune/
+*.png
