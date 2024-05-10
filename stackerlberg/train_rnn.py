@@ -7,15 +7,26 @@ from envs.matrix_game import IteratedMatrixGame
 
 
 if __name__ == "__main__":
-    env = IteratedMatrixGame(matrix="prisoners_dilemma", episode_length=10, memory=2)
-    env = FollowerWrapperMetaRL(env, num_episodes=2, zero_leader_reward=True)
+    env = IteratedMatrixGame(matrix="prisoners_dilemma", episode_length=4, memory=2)
+    env = FollowerWrapperMetaRL(
+        env,
+        num_episodes=3,
+        zero_leader_reward=True,
+        zero_follower_reward=True,
+        min_reward=-1.5,
+        max_reward=1.5,
+    )
     env = SingleAgentFollowerWrapper(env, recursively_set_leader_response=False)
 
+    # model = RecurrentPPO.load("checkpoints/follower_ppo_rnn_matrix", env=env)
     model = RecurrentPPO(
-        "MlpLstmPolicy", env=env, verbose=1, policy_kwargs={"n_lstm_layers": 2}
+        "MlpLstmPolicy",
+        env=env,
+        verbose=1,
+        learning_rate=lambda progress: 1e-3 * progress + 1e-5 * (1 - progress),
     )
-    model.learn(total_timesteps=25_000, progress_bar=True)
-    model.save("checkpoints/follower_ppo_rnn")
+    model.learn(total_timesteps=30_000, progress_bar=True)
+    model.save("checkpoints/follower_ppo_rnn_matrix")
     # env = model.get_env()
 
     # cell and hidden state of the LSTM
