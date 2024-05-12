@@ -79,6 +79,7 @@ class FollowerWrapperMetaRL(BaseParallelWrapper):
         max_reward: float = np.inf,
         min_reward: float = -np.inf,
         zero_leader_reward: bool = True,
+        zero_follower_reward: bool = False,
     ):
         assert num_episodes >= 2, "num_episodes must be greater than or equal to 2"
 
@@ -88,29 +89,57 @@ class FollowerWrapperMetaRL(BaseParallelWrapper):
         self.min_reward = min_reward
         self.max_reward = max_reward
         self.zero_leader_reward = zero_leader_reward
+        self.zero_follower_reward = zero_follower_reward
 
-        self.current_episode = 1
-        self.reset_next = False
+        self.current_episode = 0
+        self.current_step_in_episode = 0
+        self.last_state = None
+        self.reset_obs = False
 
     def observation_space(self, agent: str) -> spaces.Space:
         if agent == "leader":
             return self.env.observation_space(agent)
 
-        return gym.spaces.MultiBinary(n=self.env.observation_space(agent).n + 2)
+        # [last_leader_state, last_leader_action, episode, step_in_episode, original_observation]
+        # -1 is used as a placeholder for the first step
+        # TODO: alternatively, we could use a flag for the first step as in RL^2
+        return gym.spaces.Box(
+            low=np.array([-1, -1, 0, 0, 0]),
+            high=np.array([4, 1, self.num_episodes - 1, np.inf, 4]),
+        )
 
+    # Start a fresh episode inside this trial
+    # A trial is a sequence of episodes (as in RL^2)
     def _inner_reset(self):
         self.current_episode += 1
+        self.current_step_in_episode = 0
         self.reset_next = False
         obs = self.env.reset()
-        obs["follower"] = np.concatenate((obs["follower"], [0, 0]))
+        self.last_state = obs["leader"]
+        # overwrite the follower's observation
+        obs["follower"] = np.array(
+            [
+                -1,
+                -1,
+                self.current_episode - 1,
+                self.current_step_in_episode,
+                obs["follower"],
+            ],
+            dtype=np.float32,
+        )
 
         return obs
 
     def reset(self):
         self.current_episode = 0
+        self.current_step_in_episode = 0
+        self.last_state = None
+        self.reset_obs = False
         return self._inner_reset()
 
     def step(self, actions):
+        # Reset next if true, if the last step returned terminated == True
+        # and the current episode is not the last one
         if self.reset_next:
             obs = self._inner_reset()
             reward = {"follower": 0, "leader": 0}
@@ -118,14 +147,29 @@ class FollowerWrapperMetaRL(BaseParallelWrapper):
             trunc = {"follower": False, "leader": False}
             info = {"follower": {}, "leader": {}}
         else:
+            self.current_step_in_episode += 1
             obs, reward, term, trunc, info = self.env.step(actions)
-            obs["follower"] = np.concatenate(
-                (obs["follower"], [actions["follower"], actions["leader"]])
+            last_leader_state = self.last_state
+            self.last_state = obs["leader"]
+            # overwrite the follower's observation
+            obs["follower"] = np.array(
+                [
+                    last_leader_state,
+                    actions["leader"],
+                    self.current_episode - 1,
+                    self.current_step_in_episode,
+                    obs["follower"],
+                ],
+                dtype=np.float32,
             )
 
         if self.zero_leader_reward and self.current_episode < self.num_episodes:
             reward["leader"] = 0
 
+        if self.zero_follower_reward and self.current_episode < self.num_episodes:
+            reward["follower"] = 0
+
+        # Only set terminated to True if the last episode is terminated
         terminated = False
         if any(term.values()) or any(trunc.values()):
             self.reset_next = True
