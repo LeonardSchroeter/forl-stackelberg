@@ -6,5 +6,6 @@ dist
 *.egg-info
 wandb/
 customized_tests/
-checkpoints/
+checkpoints*/
 runs/
+*.png
