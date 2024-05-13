@@ -100,12 +100,12 @@ class FollowerWrapperMetaRL(BaseParallelWrapper):
         if agent == "leader":
             return self.env.observation_space(agent)
 
-        # [last_leader_state, last_leader_action, episode, step_in_episode, original_observation]
+        # [last_leader_state, last_leader_action, original_observation]
         # -1 is used as a placeholder for the first step
         # TODO: alternatively, we could use a flag for the first step as in RL^2
         return gym.spaces.Box(
-            low=np.array([-1, -1, 0, 0, 0]),
-            high=np.array([4, 1, self.num_episodes - 1, np.inf, 4]),
+            low=np.array([-1, -1, 0]),
+            high=np.array([4, 1, 4]),
         )
 
     # Start a fresh episode inside this trial
@@ -121,8 +121,6 @@ class FollowerWrapperMetaRL(BaseParallelWrapper):
             [
                 -1,
                 -1,
-                self.current_episode - 1,
-                self.current_step_in_episode,
                 obs["follower"],
             ],
             dtype=np.float32,
@@ -156,8 +154,6 @@ class FollowerWrapperMetaRL(BaseParallelWrapper):
                 [
                     last_leader_state,
                     actions["leader"],
-                    self.current_episode - 1,
-                    self.current_step_in_episode,
                     obs["follower"],
                 ],
                 dtype=np.float32,

@@ -17,9 +17,9 @@ if __name__ == "__main__":
     env = IteratedMatrixGame(matrix="prisoners_dilemma", episode_length=4, memory=2)
     env = FollowerWrapperMetaRL(
         env,
-        num_episodes=3,
+        num_episodes=10,
         zero_leader_reward=True,
-        zero_follower_reward=True,
+        zero_follower_reward=False,
         min_reward=-1.5,
         max_reward=1.5,
     )
