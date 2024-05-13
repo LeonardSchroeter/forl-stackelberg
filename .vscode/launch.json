@@ -35,6 +35,13 @@
             "request": "launch",
             "program": "${workspaceFolder}/stackerlberg/envs/maze_design.py",
             "console": "integratedTerminal",
+        },
+        {
+            "name": "RNN",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/stackerlberg/train_rnn.py",
+            "console": "integratedTerminal",
         }
     ]
 }

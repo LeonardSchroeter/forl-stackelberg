@@ -5,6 +5,13 @@ from wrappers.follower import FollowerWrapperMetaRL
 from wrappers.single_agent import SingleAgentFollowerWrapper
 from envs.matrix_game import IteratedMatrixGame
 
+import wandb
+from wandb.integration.sb3 import WandbCallback
+
+run = wandb.init(
+    project="forl-stackelberg-rnn",
+    sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
+)
 
 if __name__ == "__main__":
     env = IteratedMatrixGame(matrix="prisoners_dilemma", episode_length=4, memory=2)
@@ -24,8 +31,15 @@ if __name__ == "__main__":
         env=env,
         verbose=1,
         learning_rate=lambda progress: 1e-3 * progress + 1e-5 * (1 - progress),
+        tensorboard_log=f"runs/{run.id}",
     )
-    model.learn(total_timesteps=30_000, progress_bar=True)
+    model.learn(total_timesteps=30_000, 
+                progress_bar=True, 
+                callback=WandbCallback(
+                    gradient_save_freq=100,
+                    model_save_path=f"models/{run.id}",
+                    verbose=2,)
+                )
     model.save("checkpoints/follower_ppo_rnn_matrix")
     # env = model.get_env()
 
