@@ -33,7 +33,7 @@ if __name__ == "__main__":
         learning_rate=lambda progress: 1e-3 * progress + 1e-5 * (1 - progress),
         tensorboard_log=f"runs/{run.id}",
     )
-    model.learn(total_timesteps=30_000, 
+    model.learn(total_timesteps=12576, 
                 progress_bar=True, 
                 callback=WandbCallback(
                     gradient_save_freq=100,
