@@ -67,7 +67,7 @@ class IteratedMatrixGame(ParallelEnv):
         self,
         matrix: Union[np.ndarray, str] = "prisoners_dilemma",
         episode_length: int = 1,
-        memory: Union[0, 1, 2] = 0,
+        memory: int = 0,
         reward_offset: float = -2.5,
     ):
         """Creates a simple matrix game.

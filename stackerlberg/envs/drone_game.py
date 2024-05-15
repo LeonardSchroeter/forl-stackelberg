@@ -223,16 +223,15 @@ class DroneGame(ParallelEnv):
 
     def follower_act(self, action):
         self.env.render_mode = None
-        match action:
-            case 0:  # fwd
+        if action == 0: # fwd
                 self.env.step(self.env.actions.forward)
-            case 1:  # left
+        if action == 1:  # left
                 self.env.step(self.env.actions.left)
                 self.env.step(self.env.actions.forward)
                 self.env.step(self.env.actions.right)
                 self.env.step(self.env.actions.forward)
                 self.env.step_count -= 3
-            case 2:  # right
+        if action == 2:  # right
                 self.env.step(self.env.actions.right)
                 self.env.step(self.env.actions.forward)
                 self.env.step(self.env.actions.left)

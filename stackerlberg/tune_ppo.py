@@ -29,7 +29,7 @@ def tune_hyperparameters():
     tuner = tune.Tuner(
         objective,
         param_space=search_space,
-        tune_config=tune.TuneConfig(num_samples=20, max_concurrent_trials=4),
+        tune_config=tune.TuneConfig(num_samples=1, max_concurrent_trials=1),
     )
     results = tuner.fit()
 
