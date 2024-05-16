@@ -17,9 +17,9 @@ if __name__ == "__main__":
     env = IteratedMatrixGame(matrix="prisoners_dilemma", episode_length=4, memory=2)
     env = FollowerWrapperMetaRL(
         env,
-        num_episodes=10,
+        num_episodes=3,
         zero_leader_reward=True,
-        zero_follower_reward=False,
+        zero_follower_reward=True,
         min_reward=-1.5,
         max_reward=1.5,
     )
@@ -33,7 +33,7 @@ if __name__ == "__main__":
         learning_rate=lambda progress: 1e-3 * progress + 1e-5 * (1 - progress),
         tensorboard_log=f"runs/{run.id}",
     )
-    model.learn(total_timesteps=12576, 
+    model.learn(total_timesteps=30_000, 
                 progress_bar=True, 
                 callback=WandbCallback(
                     gradient_save_freq=100,
