@@ -9,3 +9,4 @@ customized_tests/
 checkpoints*/
 runs/
 *.png
+models/
