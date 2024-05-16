@@ -8,6 +8,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from follower import FollowerWrapper
 
+leader_policies = np.array([[1, 0, 0, 1, 1], [0, 0, 0, 0, 0]])
+
 
 # Wraps a multi-agent environment to a single-agent environment from the follower's perspective
 # Assumes that the environment is a FollowerWrapper, i.e. the leaders policy is fixed
@@ -31,10 +33,15 @@ class SingleAgentFollowerWrapper(gym.Env):
             self.env.set_leader_response(leader_response)
 
     def reset(self, leader_response=None, seed=None, options=None):
-        leader_policy = leader_response or [
-            self.env.action_space("leader").sample()
-            for _ in range(self.env.observation_space("leader").n)
-        ]
+        # leader_policy = leader_response or [
+        #     self.env.action_space("leader").sample()
+        #     for _ in range(self.env.observation_space("leader").n)
+        # ]
+        # sample from policies
+        leader_policy = (
+            leader_response
+            or leader_policies[np.random.randint(0, len(leader_policies))]
+        )
         self.set_leader_response(leader_policy)
         obs = self.env.reset()
         self.last_leader_obs = obs["leader"]

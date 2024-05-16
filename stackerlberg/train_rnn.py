@@ -25,30 +25,34 @@ if __name__ == "__main__":
         verbose=1,
         learning_rate=lambda progress: 1e-3 * progress + 1e-5 * (1 - progress),
     )
-    model.learn(total_timesteps=30_000, progress_bar=True)
+    model.learn(total_timesteps=15_000)
     model.save("checkpoints/follower_ppo_rnn_matrix")
     # env = model.get_env()
 
-    # cell and hidden state of the LSTM
-    lstm_states = None
-    num_envs = 1
-    # Episode start signals are used to reset the lstm states
-    episode_starts = np.ones((num_envs,), dtype=bool)
+    def evaluate(leader_response):
+        # cell and hidden state of the LSTM
+        lstm_states = None
+        num_envs = 1
+        # Episode start signals are used to reset the lstm states
+        episode_starts = np.ones((num_envs,), dtype=bool)
 
-    obs, _ = env.reset(leader_response=[1, 0, 0, 1, 1])
+        obs, _ = env.reset(leader_response=leader_response)
 
-    while True:
-        action, lstm_states = model.predict(
-            obs, state=lstm_states, episode_start=episode_starts, deterministic=True
-        )
-        new_obs, reward, done, _, _ = env.step(action)
+        while True:
+            action, lstm_states = model.predict(
+                obs, state=lstm_states, episode_start=episode_starts, deterministic=True
+            )
+            new_obs, reward, done, _, _ = env.step(action)
 
-        print(obs, action, reward)
+            print(obs, action, reward)
 
-        obs = new_obs
+            obs = new_obs
 
-        if done:
-            episode_starts = np.ones((num_envs,), dtype=bool)
-            break
-        else:
-            episode_starts = np.zeros((num_envs,), dtype=bool)
+            if done:
+                episode_starts = np.ones((num_envs,), dtype=bool)
+                break
+            else:
+                episode_starts = np.zeros((num_envs,), dtype=bool)
+
+    evaluate([1, 0, 0, 1, 1])
+    evaluate([0, 0, 0, 0, 0])
