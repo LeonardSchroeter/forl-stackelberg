@@ -93,11 +93,22 @@ class SingleAgentLeaderWrapper(gym.Env):
             return follower_action
 
     def reset(self, seed=None, options=None):
+        self.current_step = 0
         obs = self.env.reset()
         self.last_follower_obs = obs["follower"]
         return obs["leader"], {}
 
     def step(self, action):
+        self.current_step += 1
+
+        if self.current_step < len(self.queries):
+            return self.queries[self.current_step], 0, False, False, {}
+        
+        elif self.current_step == len(self.queries):
+            obs = self.env.reset()
+            self.last_follower_obs = obs["follower"]
+            return obs["leader"], 0, False, False, {}
+
         follower_action = self._get_next_follower_action()
         actions = {
             "leader": action,

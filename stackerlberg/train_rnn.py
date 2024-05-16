@@ -5,7 +5,7 @@ from sb3_contrib import RecurrentPPO
 from wrappers.follower import FollowerWrapperMetaRL
 from wrappers.single_agent import (
     SingleAgentFollowerWrapper,
-    SingleAgentQueryLeaderWrapper,
+    SingleAgentLeaderWrapper,
 )
 from envs.matrix_game import IteratedMatrixGame
 
@@ -68,7 +68,7 @@ def test_pretrain(follower_env):
     # Episode start signals are used to reset the lstm states
     episode_starts = np.ones((num_envs,), dtype=bool)
 
-    obs, _ = follower_env.reset(leader_response=[0, 0, 0, 1, 1])
+    obs, _ = follower_env.reset(leader_response=[0, 0, 0, 0, 0])
 
     while True:
         action, lstm_states = follower_model.predict(
@@ -87,48 +87,48 @@ def test_pretrain(follower_env):
             episode_starts = np.zeros((num_envs,), dtype=bool)
 
 
-# def build_leader_env(follower_env):
+def build_leader_env(follower_env):
 
-#     follower_model = RecurrentPPO.load("checkpoints/follower_ppo_rnn_matrix", env=env)
-#     leader_env = SingleAgentQueryLeaderWrapper(
-#         follower_env.env,
-#         queries=[0, 1, 2, 3, 4],
-#         follower_model=follower_model,
-#     )
+    follower_model = RecurrentPPO.load("checkpoints/follower_ppo_rnn_matrix", env=follower_env)
+    leader_env = SingleAgentLeaderWrapper(
+        follower_env.env,
+        queries=[0, 1, 2, 3, 4],
+        follower_model=follower_model,
+    )
 
-#     return leader_env
+    return leader_env
 
-# def train(leader_env):
+def train(leader_env):
 
-#     model = PPO(
-#         "MlpPolicy", leader_env, verbose=1, tensorboard_log=f"runs/{run.id}"
-#     )
-#     model.learn(
-#         total_timesteps=30_000,
-#         callback=WandbCallback(gradient_save_freq=100, verbose=2),
-#     )
-#     model.save("checkpoints/leader_ppo_rnn_matrix")
+    model = PPO(
+        "MlpPolicy", leader_env, verbose=1, tensorboard_log=f"runs/{run.id}"
+    )
+    model.learn(
+        total_timesteps=30_000,
+        callback=WandbCallback(gradient_save_freq=100, verbose=2),
+    )
+    model.save("checkpoints/leader_ppo_rnn_matrix")
 
-# def test_train(leader_env):
+def test_train(leader_env):
 
-#     leader_model = PPO.load("checkpoints/leader_ppo_rnn_matrix", env=leader_env)
-#     # play a single episode to check learned leader and follower policies
-#     obs, _ = leader_env.reset()
-#     while True:
-#         action = leader_model.predict(obs, deterministic=True)[0]
-#         new_obs, rewards, terminated, truncated, _ = leader_env.step(action)
-#         print(obs, action, rewards)
-#         obs = new_obs
+    leader_model = PPO.load("checkpoints/leader_ppo_rnn_matrix", env=leader_env)
+    # play a single episode to check learned leader and follower policies
+    obs, _ = leader_env.reset()
+    while True:
+        action = leader_model.predict(obs, deterministic=True)[0]
+        new_obs, rewards, terminated, truncated, _ = leader_env.step(action)
+        print(obs, action, rewards)
+        obs = new_obs
 
-#         if terminated or truncated:
-#             break
+        if terminated or truncated:
+            break
 
 
 if __name__ == "__main__":
     follower_env = build_follower_env()
-    pretrain(follower_env=follower_env)
+    # pretrain(follower_env=follower_env)
     test_pretrain(follower_env=follower_env)
 
-#    leader_env = build_leader_env(follower_env=follower_env)
-#    train(leader_env=leader_env)
-#    test_train(leader_env=leader_env)
+    # leader_env = build_leader_env(follower_env=follower_env)
+    # train(leader_env=leader_env)
+    # test_train(leader_env=leader_env)
