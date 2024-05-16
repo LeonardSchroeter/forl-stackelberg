@@ -49,7 +49,7 @@ if __name__ == "__main__":
     # Episode start signals are used to reset the lstm states
     episode_starts = np.ones((num_envs,), dtype=bool)
 
-    obs, _ = env.reset(leader_response=[1, 0, 0, 1, 1])
+    obs, _ = env.reset(leader_response=[0, 0, 0, 1, 1])
 
     while True:
         action, lstm_states = model.predict(
