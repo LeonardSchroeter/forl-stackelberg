@@ -177,7 +177,7 @@ class DroneGame(ParallelEnv):
 
         if not self.headless:
             self.env.render()
-            # time.sleep(0.2)
+            time.sleep(0.5)
 
         return observations, rewards, terminated, truncated, info
 

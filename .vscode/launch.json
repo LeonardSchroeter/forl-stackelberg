@@ -22,10 +22,10 @@
                     "--headless",
                     // "--pretrain",
                     // "--resume_pretrain",
-                    "--test_pretrain",
+                    // "--test_pretrain",
                     // "--train",
                     // "--resume_train",
-                    // "--test_train",
+                    "--test_train",
                     "--env",
                     "dronegame",
                     ]

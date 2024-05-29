@@ -84,7 +84,7 @@ class TabularQ:
 
     def print_policy(self):
         for j in range(32):
-            j_bits = [int(x) for x in list(np.binary_repr(j, width=5))]
+            j_bits = [int(x) for x in list(np.binary_repr(j, width=5))][::-1]
             response = []
             for i in range(5):
                 action = self.get_action([i, *j_bits], type="greedy")

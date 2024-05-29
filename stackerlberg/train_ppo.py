@@ -36,7 +36,7 @@ def build_follower_env():
             num_queries=5,
         )
     elif args.env == "dronegame":
-        env = DroneGameEnv(width=33, height=32)
+        env = DroneGameEnv(width=23, height=22)
         env = DroneGame(env=env, headless=args.headless)
         follower_env = FollowerWrapper(
             env=env, num_queries=2 ** env.observation_space("leader").n
@@ -76,7 +76,7 @@ def test_pretrain(env):
     elif args.env == "dronegame":
         env.env.env.headless = False
         env.env.env.verbose = True
-        leader_response = np.full((2**6,), 0, dtype=int)
+        leader_response = np.full((2**4,), 1, dtype=int)
         # leader_response = np.array(
         #     [0, 3, 0, 3, 3, 0, 3, 0, 0, 0, 3, 3, 0, 3, 0, 3], dtype=int
         # )
@@ -105,7 +105,7 @@ def build_leader_env(follower_env):
             [
                 int(bit)
                 for bit in np.binary_repr(i, width=follower_env.env.observation_space("leader").n)
-            ]
+            ][::-1]
             for i in range(num_queries)
         ]
         leader_env = SingleAgentLeaderWrapper(
@@ -117,7 +117,7 @@ def build_leader_env(follower_env):
 
 def train(leader_env):
     if args.resume_train:
-        leader_model = PPO.load(f"checkpoints/leader_ppo_{args.env}")
+        leader_model = PPO.load(f"checkpoints/leader_ppo_{args.env}", env=leader_env)
     else:
         leader_model = PPO(
             "MlpPolicy", leader_env, verbose=1, tensorboard_log=f"runs/{run.id}"
@@ -152,7 +152,7 @@ def test_train(leader_env):
 def print_policy():
     leader_model = PPO.load(f"checkpoints/leader_ppo_{args.env}")
     for o in range(16):
-        o_bin = [int(bit) for bit in np.binary_repr(o, 4)]
+        o_bin = [int(bit) for bit in np.binary_repr(o, 4)][::-1]
         action = leader_model.predict(o_bin, deterministic=True)[0]
         print(f"obs: {o_bin}, act: {action}")
 
@@ -173,9 +173,9 @@ if __name__ == "__main__":
     if args.test_pretrain:
         test_pretrain(env=follower_env)
 
-    # leader_env = build_leader_env(follower_env=follower_env)
-    # if args.train:
-    #     train(leader_env=leader_env)
-    # if args.test_train:
-    #     test_train(leader_env=leader_env)
-    #     print_policy()
+    leader_env = build_leader_env(follower_env=follower_env)
+    if args.train:
+        train(leader_env=leader_env)
+    if args.test_train:
+        test_train(leader_env=leader_env)
+        print_policy()
