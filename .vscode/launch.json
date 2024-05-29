@@ -24,6 +24,7 @@
                     // "--resume_pretrain",
                     // "--test_pretrain",
                     // "--train",
+                    "--remove_initseg",
                     // "--resume_train",
                     "--test_train",
                     "--env",

@@ -56,7 +56,7 @@ class SingleAgentFollowerWrapper(gym.Env):
 
 
 class SingleAgentLeaderWrapper(gym.Env):
-    def __init__(self, env, queries, follower_model):
+    def __init__(self, env, queries, follower_model, remove_initseg=False):
         self.env = env
         self.queries = queries
         self.follower_model = follower_model
@@ -68,8 +68,22 @@ class SingleAgentLeaderWrapper(gym.Env):
         self.action_space = env.action_space("leader")
         self.observation_space = env.observation_space("leader")
 
+        self.remove_initseg = remove_initseg
+
+    def set_leader_response(self, leader_model):
+        for q in self.queries:
+            leader_action , _ = leader_model.predict(
+                q, deterministic=True
+            )
+            self.leader_response.append(leader_action)
+        self.env.set_leader_response(self.leader_response)
+
     def reset(self, seed=None, options=None):
         self.current_step = 0
+        if self.remove_initseg:
+            obs = self.env.reset()
+            self.last_follower_obs = obs["follower"]
+            return obs["leader"], {}
         self.last_follower_obs = None
         self.leader_response = []
         return self.queries[0], {}
@@ -77,16 +91,17 @@ class SingleAgentLeaderWrapper(gym.Env):
     def step(self, action):
         self.current_step += 1
 
-        if self.current_step <= len(self.queries):
-            self.leader_response.append(action)
+        if not self.remove_initseg:
+            if self.current_step <= len(self.queries):
+                self.leader_response.append(action)
 
-        if self.current_step < len(self.queries):
-            return self.queries[self.current_step], 0, False, False, {}
-        elif self.current_step == len(self.queries):
-            self.env.set_leader_response(self.leader_response)
-            obs = self.env.reset()
-            self.last_follower_obs = obs["follower"]
-            return obs["leader"], 0, False, False, {}
+            if self.current_step < len(self.queries):
+                return self.queries[self.current_step], 0, False, False, {}
+            elif self.current_step == len(self.queries):
+                self.env.set_leader_response(self.leader_response)
+                obs = self.env.reset()
+                self.last_follower_obs = obs["follower"]
+                return obs["leader"], 0, False, False, {}
 
         follower_action, _states = self.follower_model.predict(
             self.last_follower_obs, deterministic=True

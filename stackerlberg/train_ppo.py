@@ -24,10 +24,12 @@ parser.add_argument("--test_pretrain", action="store_true")
 parser.add_argument("--train", action="store_true")
 parser.add_argument("--resume_train", action="store_true")
 parser.add_argument("--test_train", action="store_true")
+parser.add_argument("--remove_initseg", action="store_true")
 args = parser.parse_args()
 
 if args.pretrain or args.train:
     run = wandb.init(project="forl-stackerlberg", sync_tensorboard=True)
+
 
 def build_follower_env():
     if args.env == "matgame":
@@ -93,23 +95,32 @@ def test_pretrain(env):
 
         env.env.env.env.close(video_name="size6_context_drone0.avi")
 
+
 def build_leader_env(follower_env):
     follower_model = PPO.load(f"checkpoints/follower_ppo_{args.env}")
     if args.env == "matgame":
         leader_env = SingleAgentLeaderWrapper(
-            follower_env.env, queries=[0, 1, 2, 3, 4], follower_model=follower_model
+            follower_env.env,
+            queries=[0, 1, 2, 3, 4],
+            follower_model=follower_model,
+            remove_initseg=args.remove_initseg,
         )
     else:
         num_queries = 2 ** follower_env.env.observation_space("leader").n
         queries = [
             [
                 int(bit)
-                for bit in np.binary_repr(i, width=follower_env.env.observation_space("leader").n)
+                for bit in np.binary_repr(
+                    i, width=follower_env.env.observation_space("leader").n
+                )
             ][::-1]
             for i in range(num_queries)
         ]
         leader_env = SingleAgentLeaderWrapper(
-            follower_env.env, queries=queries, follower_model=follower_model
+            follower_env.env,
+            queries=queries,
+            follower_model=follower_model,
+            remove_initseg=args.remove_initseg,
         )
 
     return leader_env
@@ -122,15 +133,25 @@ def train(leader_env):
         leader_model = PPO(
             "MlpPolicy", leader_env, verbose=1, tensorboard_log=f"runs/{run.id}"
         )
+
+    if args.remove_initseg:
+        leader_env.set_leader_response(leader_model)
+
     leader_model.learn(
         total_timesteps=200_000,
         callback=WandbCallback(gradient_save_freq=100, verbose=2),
     )
-    leader_model.save(f"checkpoints/leader_ppo_{args.env}")
+    if args.remove_initseg:
+        leader_model.save(f"checkpoints/leader_ppo_woinitseg")
+    else:
+        leader_model.save(f"checkpoints/leader_ppo_{args.env}")
 
 
 def test_train(leader_env):
     leader_model = PPO.load(f"checkpoints/leader_ppo_{args.env}")
+
+    if args.remove_initseg and not leader_env.leader_response:
+        leader_env.set_leader_response(leader_model)
 
     if args.env != "matgame":
         leader_env.env.env.headless = False
