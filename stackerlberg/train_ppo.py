@@ -1,33 +1,39 @@
+import os
+
 from stable_baselines3 import PPO
 import numpy as np
 import argparse
 import wandb
 from wandb.integration.sb3 import WandbCallback
+from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 
 from envs.matrix_game import IteratedMatrixGame
 
 # from envs.maze_design import Maze, MazeDesign
 from envs.drone_game import DroneGame, DroneGameEnv
 from wrappers.single_agent import (
-    SingleAgentFollowerWrapper,
+    InfoSampleSingleAgentFollowerWrapper,
     SingleAgentLeaderWrapper,
 )
 from wrappers.follower import FollowerWrapper
+
+from util.checkpoint import _latest_step
+from util.rmckp_callback import RmckpCallback
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--env", help="choose you environment: matgame, dronegame")
 parser.add_argument("--headless", help="disable GUI", action="store_true")
 parser.add_argument("--verbose", help="anable outputs", action="store_true")
 parser.add_argument("--pretrain", action="store_true")
-parser.add_argument("--resume_pretrain", action="store_true")
 parser.add_argument("--test_pretrain", action="store_true")
 parser.add_argument("--train", action="store_true")
-parser.add_argument("--resume_train", action="store_true")
 parser.add_argument("--test_train", action="store_true")
+parser.add_argument("--log_wandb", action="store_true")
 args = parser.parse_args()
 
 if args.pretrain or args.train:
     run = wandb.init(project="forl-stackerlberg", sync_tensorboard=True)
+
 
 def build_follower_env():
     if args.env == "matgame":
@@ -41,28 +47,61 @@ def build_follower_env():
         follower_env = FollowerWrapper(
             env=env, num_queries=2 ** env.observation_space("leader").n
         )
-    follower_env = SingleAgentFollowerWrapper(follower_env)
+    follower_env = InfoSampleSingleAgentFollowerWrapper(follower_env)
 
     return follower_env
 
 
-def pretrain(env, config):
-    if args.resume_pretrain:
-        model = PPO.load(f"checkpoints/follower_ppo_{args.env}", env=env)
+def pretrain(follower_env, config):
+
+    checkpoints_path = f"checkpoints/{args.env}/follower"
+
+    latest_step = _latest_step(checkpoints_path) if os.listdir(checkpoints_path) else 0
+
+    checkpoint_callback = CheckpointCallback(
+        base_num_steps=latest_step,
+        save_freq=1000,
+        save_path=checkpoints_path,
+        name_prefix="ppo",
+        save_replay_buffer=True,
+        save_vecnormalize=True,
+    )
+    rmckp_callback = RmckpCallback(ckp_path=checkpoints_path)
+
+    # Resuming
+    if os.listdir(checkpoints_path):
+        follower_model = PPO.load(
+            os.path.join(checkpoints_path, f"ppo_{latest_step}_steps.zip"),
+            env=follower_env,
+        )
+    # Starting from scratch
     else:
-        model = PPO(
+        follower_model = PPO(
             "MlpPolicy",
-            env,
+            follower_env,
             verbose=1,
             tensorboard_log=f"runs/{run.id}",
             **config,
         )
-    model.learn(
-        total_timesteps=300_000,
-        callback=WandbCallback(gradient_save_freq=100, verbose=2),
-    )
-    model.save(f"checkpoints/follower_ppo_{args.env}")
-    return model
+
+    leader_env = build_leader_env(follower_env=follower_env)
+
+    leader_model = PPO("MlpPolicy", leader_env, verbose=1)
+
+    callback_list = [checkpoint_callback, rmckp_callback]
+    if args.log_wandb:
+        wandb_callback = WandbCallback(gradient_save_freq=100, verbose=2)
+        callback_list.append(wandb_callback)
+
+    for _ in range(100):
+        follower_env.up
+        follower_model.learn(
+            total_timesteps=3000,
+            reset_num_timesteps=False,
+            callback=CallbackList(callback_list),
+        )
+        leader_model.learn(total_timesteps=1000, reset_num_timesteps=False)
+    return follower_model
 
 
 def test_pretrain(env):
@@ -93,6 +132,7 @@ def test_pretrain(env):
 
         env.env.env.env.close(video_name="size6_context_drone0.avi")
 
+
 def build_leader_env(follower_env):
     follower_model = PPO.load(f"checkpoints/follower_ppo_{args.env}")
     if args.env == "matgame":
@@ -104,8 +144,10 @@ def build_leader_env(follower_env):
         queries = [
             [
                 int(bit)
-                for bit in np.binary_repr(i, width=follower_env.env.observation_space("leader").n)
-            ]
+                for bit in np.binary_repr(
+                    i, width=follower_env.env.observation_space("leader").n
+                )
+            ][::-1]
             for i in range(num_queries)
         ]
         leader_env = SingleAgentLeaderWrapper(
@@ -152,7 +194,7 @@ def test_train(leader_env):
 def print_policy():
     leader_model = PPO.load(f"checkpoints/leader_ppo_{args.env}")
     for o in range(16):
-        o_bin = [int(bit) for bit in np.binary_repr(o, 4)]
+        o_bin = [int(bit) for bit in np.binary_repr(o, 4)][::-1]
         action = leader_model.predict(o_bin, deterministic=True)[0]
         print(f"obs: {o_bin}, act: {action}")
 
@@ -169,7 +211,7 @@ if __name__ == "__main__":
     }
 
     if args.pretrain:
-        pretrain(env=follower_env, config=pretrain_config)
+        pretrain(follower_env=follower_env, config=pretrain_config)
     if args.test_pretrain:
         test_pretrain(env=follower_env)
 
