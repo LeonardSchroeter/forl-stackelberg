@@ -31,7 +31,7 @@ parser.add_argument("--test_train", action="store_true")
 parser.add_argument("--log_wandb", action="store_true")
 args = parser.parse_args()
 
-if args.pretrain or args.train:
+if args.log_wandb and (args.pretrain or args.train):
     run = wandb.init(project="forl-stackerlberg", sync_tensorboard=True)
 
 
@@ -53,12 +53,11 @@ def build_follower_env():
 
 
 def pretrain(follower_env, config):
-
     checkpoints_path = f"checkpoints/{args.env}"
     follower_ckppath = os.path.join(checkpoints_path, "follower")
 
     if not os.path.exists(follower_ckppath):
-        os.makedirs(follower_ckppath) 
+        os.makedirs(follower_ckppath)
 
     latest_step = _latest_step(follower_ckppath) if os.listdir(follower_ckppath) else 0
 
@@ -87,9 +86,11 @@ def pretrain(follower_env, config):
             **config,
         )
 
-    leader_env = build_leader_env(follower_env=follower_env, follower_model=follower_model)
+    leader_env = build_leader_env(
+        follower_env=follower_env, follower_model=follower_model
+    )
 
-    leader_model = PPO("MlpPolicy", leader_env, verbose=1)
+    leader_model = PPO("MlpPolicy", leader_env, verbose=1, tensorboard_log=f"runs/{run.id}")
 
     callback_list = [checkpoint_callback, rmckp_callback]
     if args.log_wandb:
@@ -105,7 +106,7 @@ def pretrain(follower_env, config):
         )
         leader_env.update_follower_model(follower_model)
         leader_model.learn(total_timesteps=1000, reset_num_timesteps=False)
-        leader_model.save(os.path.join(checkpoints_path, "leader"))
+        leader_model.save(os.path.join(checkpoints_path, "leader_pretrained"))
     return follower_model
 
 
@@ -113,9 +114,9 @@ def test_pretrain(env):
     checkpoints_path = f"checkpoints/{args.env}/follower"
     latest_step = _latest_step(checkpoints_path)
     model = PPO.load(
-            os.path.join(checkpoints_path, f"ppo_{latest_step}_steps.zip"),
-            env=env,
-        )
+        os.path.join(checkpoints_path, f"ppo_{latest_step}_steps.zip"),
+        env=env,
+    )
     if args.env == "matgame":
         for response in [[1, 1, 1, 1, 1], [0, 0, 0, 0, 0], [0, 0, 0, 1, 1]]:
             for s in range(5):
@@ -125,7 +126,7 @@ def test_pretrain(env):
     elif args.env == "dronegame":
         env.env.env.headless = False
         env.env.env.verbose = True
-        leader_response = np.full((2**4,), 3, dtype=int)
+        leader_response = np.full((2**4,), 0, dtype=int)
         # leader_response = np.array(
         #     [0, 3, 0, 3, 3, 0, 3, 0, 0, 0, 3, 3, 0, 3, 0, 3], dtype=int
         #     # [3, 1, 3, 3, 3, 1, 3, 1, 1, 3, 1, 1, 3, 1, 3, 1], dtype=int
@@ -145,9 +146,11 @@ def test_pretrain(env):
 
 
 def build_leader_env(follower_env, follower_model=None):
-
     if follower_model is None:
-        follower_model = PPO.load(f"checkpoints/follower_ppo_{args.env}")
+        latest_step_follower = _latest_step(f"checkpoints/{args.env}/follower")
+        follower_model = PPO.load(
+            f"checkpoints/{args.env}/follower/ppo_{latest_step_follower}_steps.zip"
+        )
     if args.env == "matgame":
         leader_env = SingleAgentLeaderWrapper(
             follower_env.env, queries=[0, 1, 2, 3, 4], follower_model=follower_model
@@ -171,31 +174,58 @@ def build_leader_env(follower_env, follower_model=None):
 
 
 def train(leader_env):
-    
-    checkpoints_path = f"checkpoints/{args.env}/leader"
+    leader_ckppath = f"checkpoints/{args.env}/leader"
+    if not os.path.exists(leader_ckppath):
+        os.makedirs(leader_ckppath)
 
-    if not os.path.exists(checkpoints_path):
-        os.makedirs(checkpoints_path) 
-
-    if args.resume_train:
-        leader_model = PPO.load(f"checkpoints/leader_ppo_{args.env}")
-    else:
-        leader_model = PPO(
-            "MlpPolicy", leader_env, verbose=1, tensorboard_log=f"runs/{run.id}"
+    if not os.listdir(leader_ckppath):
+        leader_model = PPO.load(
+            f"checkpoints/{args.env}/leader_pretrained.zip", env=leader_env
         )
+    else:
+        latest_step = _latest_step(leader_ckppath)
+        leader_model = PPO.load(
+            os.path.join(leader_ckppath, f"ppo_{latest_step}_steps.zip"), env=leader_env
+        )
+
+    if leader_model.tensorboard_log is None:
+        leader_model.tensorboard_log = f"runs/{run.id}"
+
+    checkpoint_callback = CheckpointCallback(
+        save_freq=1000,
+        save_path=leader_ckppath,
+        name_prefix="ppo",
+        save_replay_buffer=True,
+        save_vecnormalize=True,
+    )
+    rmckp_callback = RmckpCallback(ckp_path=leader_ckppath)
+
+    callback_list = [checkpoint_callback, rmckp_callback]
+    if args.log_wandb:
+        wandb_callback = WandbCallback(gradient_save_freq=100, verbose=2)
+        callback_list.append(wandb_callback)
+
     leader_model.learn(
         total_timesteps=200_000,
-        callback=WandbCallback(gradient_save_freq=100, verbose=2),
+        callback=CallbackList(callback_list),
     )
-    leader_model.save(f"checkpoints/leader_ppo_{args.env}")
-
 
 def test_train(leader_env):
-    leader_model = PPO.load(f"checkpoints/leader_ppo_{args.env}")
+    leader_ckppath = f"checkpoints/{args.env}/leader"
+    if not os.listdir(leader_ckppath):
+        leader_model = PPO.load(
+            f"checkpoints/{args.env}/leader_pretrained.zip", env=leader_env
+        )
+    else:
+        latest_step = _latest_step(leader_ckppath)
+        leader_model = PPO.load(
+            os.path.join(leader_ckppath, f"ppo_{latest_step}_steps.zip"), env=leader_env
+        )
 
     if args.env != "matgame":
         leader_env.env.env.headless = False
         leader_env.env.env.verbose = True
+        leader_env.env.env.sleep_time = 0.7
 
     # play a single episode to check learned leader and follower policies
     obs, _ = leader_env.reset()
@@ -234,9 +264,9 @@ if __name__ == "__main__":
     if args.test_pretrain:
         test_pretrain(env=follower_env)
 
-    # leader_env = build_leader_env(follower_env=follower_env)
-    # if args.train:
-    #     train(leader_env=leader_env)
-    # if args.test_train:
-    #     test_train(leader_env=leader_env)
-    #     print_policy()
+    leader_env = build_leader_env(follower_env=follower_env)
+    if args.train:
+        train(leader_env=leader_env)
+    if args.test_train:
+        test_train(leader_env=leader_env)
+        print_policy()

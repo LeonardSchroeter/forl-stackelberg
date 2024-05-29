@@ -20,10 +20,11 @@
             "justMyCode": false,
             "args": [
                     "--headless",
-                    "--pretrain",
+                    // "--pretrain",
                     // "--test_pretrain",
                     // "--train",
-                    // "--test_train",
+                    "--test_train",
+                    "--log_wandb",
                     "--env",
                     "dronegame",
                     ]
