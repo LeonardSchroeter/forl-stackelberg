@@ -42,7 +42,7 @@ def build_follower_env():
             num_queries=5,
         )
     elif args.env == "dronegame":
-        env = DroneGameEnv(width=33, height=32)
+        env = DroneGameEnv(width=23, height=22)
         env = DroneGame(env=env, headless=args.headless)
         follower_env = FollowerWrapper(
             env=env, num_queries=2 ** env.observation_space("leader").n
@@ -53,8 +53,10 @@ def build_follower_env():
 
 
 def pretrain(follower_env, config):
-
     checkpoints_path = f"checkpoints/{args.env}/follower"
+
+    if not os.path.exists(checkpoints_path):
+        os.makedirs(checkpoints_path) 
 
     latest_step = _latest_step(checkpoints_path) if os.listdir(checkpoints_path) else 0
 
@@ -94,7 +96,7 @@ def pretrain(follower_env, config):
         callback_list.append(wandb_callback)
 
     for _ in range(100):
-        follower_env.up
+        follower_env.update_leader_model(leader_model)
         follower_model.learn(
             total_timesteps=3000,
             reset_num_timesteps=False,
@@ -105,7 +107,12 @@ def pretrain(follower_env, config):
 
 
 def test_pretrain(env):
-    model = PPO.load(f"checkpoints/follower_ppo_{args.env}")
+    checkpoints_path = f"checkpoints/{args.env}/follower"
+    latest_step = _latest_step(checkpoints_path)
+    model = PPO.load(
+            os.path.join(checkpoints_path, f"ppo_{latest_step}_steps.zip"),
+            env=env,
+        )
     if args.env == "matgame":
         for response in [[1, 1, 1, 1, 1], [0, 0, 0, 0, 0], [0, 0, 0, 1, 1]]:
             for s in range(5):
@@ -115,10 +122,11 @@ def test_pretrain(env):
     elif args.env == "dronegame":
         env.env.env.headless = False
         env.env.env.verbose = True
-        leader_response = np.full((2**6,), 0, dtype=int)
-        # leader_response = np.array(
-        #     [0, 3, 0, 3, 3, 0, 3, 0, 0, 0, 3, 3, 0, 3, 0, 3], dtype=int
-        # )
+        # leader_response = np.full((2**4,), 2, dtype=int)
+        leader_response = np.array(
+            # [0, 3, 0, 3, 3, 0, 3, 0, 0, 0, 3, 3, 0, 3, 0, 3], dtype=int
+            [3, 1, 3, 3, 3, 1, 3, 1, 1, 3, 1, 1, 3, 1, 3, 1], dtype=int
+        )
         obs, _ = env.reset(leader_response=leader_response)
 
         while True:

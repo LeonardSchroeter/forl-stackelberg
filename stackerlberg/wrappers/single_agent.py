@@ -123,8 +123,8 @@ class InfoSampleSingleAgentFollowerWrapper(SingleAgentFollowerWrapper):
 
         self.leader_model: PPO = None
     
-    def update_leader_policy(self, leader_policy):
-        self.leader_policy = leader_policy
+    def update_leader_model(self, leader_model):
+        self.leader_model = leader_model
 
     def reset(
         self, leader_response=None, seed=None, options=None

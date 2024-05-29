@@ -20,11 +20,9 @@
             "justMyCode": false,
             "args": [
                     "--headless",
-                    // "--pretrain",
-                    // "--resume_pretrain",
-                    "--test_pretrain",
+                    "--pretrain",
+                    // "--test_pretrain",
                     // "--train",
-                    // "--resume_train",
                     // "--test_train",
                     "--env",
                     "dronegame",
