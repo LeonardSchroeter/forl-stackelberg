@@ -18,13 +18,14 @@
             "program": "${workspaceFolder}/stackerlberg/train_ppo.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["--headless",
-                    "--pretrain",
+            "args": [
+                    "--headless",
+                    // "--pretrain",
                     // "--resume_pretrain",
                     "--test_pretrain",
-                    "--train",
+                    // "--train",
                     // "--resume_train",
-                    "--test_train",
+                    // "--test_train",
                     "--env",
                     "dronegame",
                     ]

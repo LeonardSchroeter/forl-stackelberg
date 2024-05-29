@@ -28,39 +28,42 @@ from util.point import Point2D
 class DroneGameEnv(MiniGridEnv):
     def __init__(
         self,
-        size=22,
-        agent_start_pos=None,
+        width=23,
+        height=22,
         agent_start_dir=0,
         agent_dir_fixed=True,
         agent_view_size=3,
-        max_steps: int | None = None,
-        drone_options: List = [(15, 3), (15, 8), (15, 13), (15, 18)],
-        num_divisions=4,
         drone_cover_size=3,
+        drone_dist=5,
         **kwargs,
     ):
-        if agent_start_pos is None:
-            self.agent_start_pos = (
-                np.random.randint(1, min(int(0.7 * size), size - 1)),
-                np.random.randint(1, size - 1),
-            )
-        else:
-            self.agent_start_pos = agent_start_pos
+        # if agent_start_pos is None:
+        #     self.agent_start_pos = (
+        #         np.random.randint(1, min(int(0.7 * size), size - 1)),
+        #         np.random.randint(1, size - 1),
+        #     )
+        # else:
+        self.agent_start_pos = (1, int((height - 2) / 2))
         self.agent_start_dir = agent_start_dir
         self.agent_dir_fixed = agent_dir_fixed
         self.agent_view_size = agent_view_size
-        self.drone_options = drone_options
-        self.num_divisions = num_divisions
+
+        self.drone_options = []
+        drone_ys = np.arange(3, height + 1, step=drone_dist)
+        for y in drone_ys:
+            self.drone_options.append((int((width - 3) * 0.75), y))
+
+        self.num_divisions = len(self.drone_options)
         self.drone_cover_size = drone_cover_size
 
         mission_space = MissionSpace(mission_func=self._gen_mission)
 
-        if max_steps is None:
-            max_steps = 4 * size**2
+        max_steps = 4 * width**2
 
         super().__init__(
             mission_space=mission_space,
-            grid_size=size,
+            width=width,
+            height=height,
             agent_view_size=agent_view_size,
             # Set this to True for maximum speed
             see_through_walls=True,
@@ -77,8 +80,8 @@ class DroneGameEnv(MiniGridEnv):
 
         self.grid.wall_rect(0, 0, width, height)
 
-        for j in range(1, self.width - 1):
-            self.put_obj(Goal(), self.height - 2, j)
+        for j in range(1, self.height - 1):
+            self.put_obj(Goal(), self.width - 2, j)
 
         # if self.agent_start_pos is not None:
         self.agent_pos = self.agent_start_pos
@@ -100,14 +103,11 @@ class DroneGame(ParallelEnv):
         "name": "drone_game",
     }
 
-    def __init__(
-        self, env: DroneGameEnv, headless: bool = False, verbose: bool = False
-    ) -> None:
+    def __init__(self, env: DroneGameEnv, headless: bool = False) -> None:
         super().__init__()
 
         self.env = env
         self.headless = headless
-        self.verbose = verbose
         if not headless:
             self.env.render_mode = "human"
 
@@ -143,9 +143,7 @@ class DroneGame(ParallelEnv):
         self.env.reset()
         return {
             "leader": np.zeros(self.env.num_divisions),
-            "follower": np.zeros(
-                1 + self.env.agent_view_size * self.env.agent_view_size
-            ),
+            "follower": np.zeros(len(self.observation_space("follower").nvec)),
         }
 
     def step(self, actions):
@@ -159,27 +157,27 @@ class DroneGame(ParallelEnv):
         rewards["leader"] = self.get_leader_reward()
         rewards["follower"] = -rewards["leader"]
 
-        terminated = (self.env.agent_pos[0] == self.env.height - 2) or isinstance(
+        terminated = (self.env.agent_pos[0] == self.env.height - 2
+        ) or isinstance(
             self.env.grid.get(self.env.agent_pos[0], self.env.agent_pos[1]), LavaColored
         )
         terminated = {"leader": terminated, "follower": terminated}
         truncated = {"leader": False, "follower": False}
         info = {"leader": {}, "follower": {}}
 
-        if self.verbose:
+        if not self.headless:
             print(f"\n STEP: {self.env.step_count}\n")
             print(f"\nterminated: {terminated}")
             print(f"Leader takes action {actions['leader']}")
             print(f"leader observation: {observations['leader']}")
             print(f"\nFollower takes action {actions['follower']}")
             print(f"follower observation: {observations['follower']}")
-            print(f"follower observation binary: {observations['follower']}")
             print(f"follower reward: {rewards['follower']}")
             print(f"leader reward: {rewards['leader']}")
 
         if not self.headless:
             self.env.render()
-            time.sleep(1.0)
+            # time.sleep(0.2)
 
         return observations, rewards, terminated, truncated, info
 
@@ -188,7 +186,7 @@ class DroneGame(ParallelEnv):
         self.drones.append(Drone(env=self.env, radius=1, center=drone_place))
 
     def transition_drones(self):
-        if len(self.drones) >= 4:
+        if len(self.drones) >= self.env.num_divisions:
             dead_drone = self.drones.pop(0)
             dead_drone.undo_lava()
             del dead_drone
@@ -217,27 +215,26 @@ class DroneGame(ParallelEnv):
         if isinstance(
             self.env.grid.get(self.env.agent_pos[0], self.env.agent_pos[1]), LavaColored
         ):
-            return 5 * self.env.height
+            return 1
 
         return 0
 
     def follower_act(self, action):
         self.env.render_mode = None
-        match action:
-            case 0:  # fwd
-                self.env.step(self.env.actions.forward)
-            case 1:  # left
-                self.env.step(self.env.actions.left)
-                self.env.step(self.env.actions.forward)
-                self.env.step(self.env.actions.right)
-                self.env.step(self.env.actions.forward)
-                self.env.step_count -= 3
-            case 2:  # right
-                self.env.step(self.env.actions.right)
-                self.env.step(self.env.actions.forward)
-                self.env.step(self.env.actions.left)
-                self.env.step(self.env.actions.forward)
-                self.env.step_count -= 3
+        if action == 0:  # fwd
+            self.env.step(self.env.actions.forward)
+        elif action == 1:  # left
+            self.env.step(self.env.actions.left)
+            self.env.step(self.env.actions.forward)
+            self.env.step(self.env.actions.right)
+            self.env.step(self.env.actions.forward)
+            self.env.step_count -= 3
+        elif action == 2:  # right
+            self.env.step(self.env.actions.right)
+            self.env.step(self.env.actions.forward)
+            self.env.step(self.env.actions.left)
+            self.env.step(self.env.actions.forward)
+            self.env.step_count -= 3
         self.env.render_mode = "human" if not self.headless else None
 
     def get_follower_observation(self):
@@ -312,7 +309,7 @@ class Drone:
 if __name__ == "__main__":
     # env = DroneGameEnv(agent_start_pos=(3, 10), agent_dir_fixed=True)
     env = DroneGameEnv(agent_start_pos=(1, 10), agent_dir_fixed=True, agent_start_dir=0)
-    env = DroneGame(env=env, verbose=True)
+    env = DroneGame(env=env)
 
     follower_action_seq = [0, 0, 0, 0, 0, 2, 2, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0]
 

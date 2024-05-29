@@ -14,8 +14,6 @@ from wrappers.single_agent import (
 )
 from wrappers.follower import FollowerWrapper
 
-
-
 parser = argparse.ArgumentParser()
 parser.add_argument("--env", help="choose you environment: matgame, dronegame")
 parser.add_argument("--headless", help="disable GUI", action="store_true")
@@ -33,19 +31,19 @@ if args.pretrain or args.train:
 
 def build_follower_env():
     if args.env == "matgame":
-        env_follower = FollowerWrapper(
+        follower_env = FollowerWrapper(
             IteratedMatrixGame(matrix="prisoners_dilemma", episode_length=10, memory=2),
             num_queries=5,
         )
     elif args.env == "dronegame":
-        env = DroneGameEnv(agent_start_pos=(1, 10))
+        env = DroneGameEnv(width=33, height=32)
         env = DroneGame(env=env, headless=args.headless)
-        env_follower = FollowerWrapper(
+        follower_env = FollowerWrapper(
             env=env, num_queries=2 ** env.observation_space("leader").n
         )
-    env_follower = SingleAgentFollowerWrapper(env_follower)
+    follower_env = SingleAgentFollowerWrapper(follower_env)
 
-    return env_follower
+    return follower_env
 
 
 def pretrain(env, config):
@@ -78,11 +76,12 @@ def test_pretrain(env):
     elif args.env == "dronegame":
         env.env.env.headless = False
         env.env.env.verbose = True
-        # leader_response = np.full((16,), 3, dtype=int)
-        leader_response = np.array(
-            [0, 3, 1, 2, 3, 1, 2, 0, 0, 1, 2, 3, 0, 2, 1, 3], dtype=int
-        )
+        leader_response = np.full((2**6,), 0, dtype=int)
+        # leader_response = np.array(
+        #     [0, 3, 0, 3, 3, 0, 3, 0, 0, 0, 3, 3, 0, 3, 0, 3], dtype=int
+        # )
         obs, _ = env.reset(leader_response=leader_response)
+
         while True:
             action = model.predict(obs, deterministic=True)[0]
             new_obs, rewards, terminated, truncated, _ = env.step(action)
@@ -92,42 +91,36 @@ def test_pretrain(env):
             if terminated or truncated:
                 break
 
+        env.env.env.env.close(video_name="size6_context_drone0.avi")
 
-def build_leader_env():
+def build_leader_env(follower_env):
     follower_model = PPO.load(f"checkpoints/follower_ppo_{args.env}")
     if args.env == "matgame":
-        env_leader = FollowerWrapper(
-            IteratedMatrixGame(matrix="prisoners_dilemma", episode_length=10, memory=2),
-            num_queries=5,
-        )
-        env_leader = SingleAgentLeaderWrapper(
-            env_leader, queries=[0, 1, 2, 3, 4], follower_model=follower_model
+        leader_env = SingleAgentLeaderWrapper(
+            follower_env.env, queries=[0, 1, 2, 3, 4], follower_model=follower_model
         )
     else:
-        env = DroneGameEnv(agent_start_pos=(1, 10))
-        env = DroneGame(env=env, headless=args.headless)
-        num_queries = 2 ** env.observation_space("leader").n
-        env_leader = FollowerWrapper(env=env, num_queries=num_queries)
+        num_queries = 2 ** follower_env.env.observation_space("leader").n
         queries = [
             [
                 int(bit)
-                for bit in np.binary_repr(i, width=env.observation_space("leader").n)
+                for bit in np.binary_repr(i, width=follower_env.env.observation_space("leader").n)
             ]
             for i in range(num_queries)
         ]
-        env_leader = SingleAgentLeaderWrapper(
-            env_leader, queries=queries, follower_model=follower_model
+        leader_env = SingleAgentLeaderWrapper(
+            follower_env.env, queries=queries, follower_model=follower_model
         )
 
-    return env_leader
+    return leader_env
 
 
-def train(env_leader):
+def train(leader_env):
     if args.resume_train:
         leader_model = PPO.load(f"checkpoints/leader_ppo_{args.env}")
     else:
         leader_model = PPO(
-            "MlpPolicy", env_leader, verbose=1, tensorboard_log=f"runs/{run.id}"
+            "MlpPolicy", leader_env, verbose=1, tensorboard_log=f"runs/{run.id}"
         )
     leader_model.learn(
         total_timesteps=200_000,
@@ -136,23 +129,24 @@ def train(env_leader):
     leader_model.save(f"checkpoints/leader_ppo_{args.env}")
 
 
-def test_train(env_leader):
+def test_train(leader_env):
     leader_model = PPO.load(f"checkpoints/leader_ppo_{args.env}")
 
     if args.env != "matgame":
-        env_leader.env.env.headless = False
-        env_leader.env.env.verbose = True
+        leader_env.env.env.headless = False
+        leader_env.env.env.verbose = True
 
     # play a single episode to check learned leader and follower policies
-    obs, _ = env_leader.reset()
+    obs, _ = leader_env.reset()
     while True:
         action = leader_model.predict(obs, deterministic=True)[0]
-        new_obs, rewards, terminated, truncated, _ = env_leader.step(action)
+        new_obs, rewards, terminated, truncated, _ = leader_env.step(action)
         print(obs, action, rewards)
         obs = new_obs
 
         if terminated or truncated:
             break
+    leader_env.env.env.env.close(video_name="complete_round.avi")
 
 
 def print_policy():
@@ -179,9 +173,9 @@ if __name__ == "__main__":
     if args.test_pretrain:
         test_pretrain(env=follower_env)
 
-    leader_env = build_leader_env()
-    if args.train:
-        train(env_leader=leader_env)
-    if args.test_train:
-        test_train(env_leader=leader_env)
-        print_policy()
+    # leader_env = build_leader_env(follower_env=follower_env)
+    # if args.train:
+    #     train(leader_env=leader_env)
+    # if args.test_train:
+    #     test_train(leader_env=leader_env)
+    #     print_policy()
