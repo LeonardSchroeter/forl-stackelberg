@@ -72,6 +72,9 @@ class SingleAgentLeaderWrapper(gym.Env):
         self.action_space = env.action_space("leader")
         self.observation_space = env.observation_space("leader")
 
+    def update_follower_model(self, follower_model):
+        self.follower_model = follower_model
+
     def reset(self, seed=None, options=None):
         self.current_step = 0
         self.last_follower_obs = None

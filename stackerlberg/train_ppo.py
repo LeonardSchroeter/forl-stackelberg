@@ -53,27 +53,28 @@ def build_follower_env():
 
 
 def pretrain(follower_env, config):
-    checkpoints_path = f"checkpoints/{args.env}/follower"
 
-    if not os.path.exists(checkpoints_path):
-        os.makedirs(checkpoints_path) 
+    checkpoints_path = f"checkpoints/{args.env}"
+    follower_ckppath = os.path.join(checkpoints_path, "follower")
 
-    latest_step = _latest_step(checkpoints_path) if os.listdir(checkpoints_path) else 0
+    if not os.path.exists(follower_ckppath):
+        os.makedirs(follower_ckppath) 
+
+    latest_step = _latest_step(follower_ckppath) if os.listdir(follower_ckppath) else 0
 
     checkpoint_callback = CheckpointCallback(
-        base_num_steps=latest_step,
         save_freq=1000,
-        save_path=checkpoints_path,
+        save_path=follower_ckppath,
         name_prefix="ppo",
         save_replay_buffer=True,
         save_vecnormalize=True,
     )
-    rmckp_callback = RmckpCallback(ckp_path=checkpoints_path)
+    rmckp_callback = RmckpCallback(ckp_path=follower_ckppath)
 
     # Resuming
-    if os.listdir(checkpoints_path):
+    if os.listdir(follower_ckppath):
         follower_model = PPO.load(
-            os.path.join(checkpoints_path, f"ppo_{latest_step}_steps.zip"),
+            os.path.join(follower_ckppath, f"ppo_{latest_step}_steps.zip"),
             env=follower_env,
         )
     # Starting from scratch
@@ -86,7 +87,7 @@ def pretrain(follower_env, config):
             **config,
         )
 
-    leader_env = build_leader_env(follower_env=follower_env)
+    leader_env = build_leader_env(follower_env=follower_env, follower_model=follower_model)
 
     leader_model = PPO("MlpPolicy", leader_env, verbose=1)
 
@@ -102,7 +103,9 @@ def pretrain(follower_env, config):
             reset_num_timesteps=False,
             callback=CallbackList(callback_list),
         )
+        leader_env.update_follower_model(follower_model)
         leader_model.learn(total_timesteps=1000, reset_num_timesteps=False)
+        leader_model.save(os.path.join(checkpoints_path, "leader"))
     return follower_model
 
 
@@ -122,11 +125,11 @@ def test_pretrain(env):
     elif args.env == "dronegame":
         env.env.env.headless = False
         env.env.env.verbose = True
-        # leader_response = np.full((2**4,), 2, dtype=int)
-        leader_response = np.array(
-            # [0, 3, 0, 3, 3, 0, 3, 0, 0, 0, 3, 3, 0, 3, 0, 3], dtype=int
-            [3, 1, 3, 3, 3, 1, 3, 1, 1, 3, 1, 1, 3, 1, 3, 1], dtype=int
-        )
+        leader_response = np.full((2**4,), 3, dtype=int)
+        # leader_response = np.array(
+        #     [0, 3, 0, 3, 3, 0, 3, 0, 0, 0, 3, 3, 0, 3, 0, 3], dtype=int
+        #     # [3, 1, 3, 3, 3, 1, 3, 1, 1, 3, 1, 1, 3, 1, 3, 1], dtype=int
+        # )
         obs, _ = env.reset(leader_response=leader_response)
 
         while True:
@@ -141,8 +144,10 @@ def test_pretrain(env):
         env.env.env.env.close(video_name="size6_context_drone0.avi")
 
 
-def build_leader_env(follower_env):
-    follower_model = PPO.load(f"checkpoints/follower_ppo_{args.env}")
+def build_leader_env(follower_env, follower_model=None):
+
+    if follower_model is None:
+        follower_model = PPO.load(f"checkpoints/follower_ppo_{args.env}")
     if args.env == "matgame":
         leader_env = SingleAgentLeaderWrapper(
             follower_env.env, queries=[0, 1, 2, 3, 4], follower_model=follower_model
@@ -166,6 +171,12 @@ def build_leader_env(follower_env):
 
 
 def train(leader_env):
+    
+    checkpoints_path = f"checkpoints/{args.env}/leader"
+
+    if not os.path.exists(checkpoints_path):
+        os.makedirs(checkpoints_path) 
+
     if args.resume_train:
         leader_model = PPO.load(f"checkpoints/leader_ppo_{args.env}")
     else:
