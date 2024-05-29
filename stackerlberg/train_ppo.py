@@ -124,7 +124,7 @@ def build_leader_env():
 
 def train(env_leader):
     if args.resume_train:
-        leader_model = PPO.load(f"checkpoints/leader_ppo_{args.env}")
+        leader_model = PPO.load(f"checkpoints/leader_ppo_{args.env}", env=env_leader)
     else:
         leader_model = PPO(
             "MlpPolicy", env_leader, verbose=1, tensorboard_log=f"runs/{run.id}"
@@ -134,7 +134,7 @@ def train(env_leader):
         total_timesteps=200_000,
         callback=WandbCallback(gradient_save_freq=100, verbose=2),
     )
-    leader_model.save(f"checkpoints/leader_ppo_{args.env}")
+    leader_model.save(f"checkpoints/leader_ppo_{args.env}_woinitseg")
 
 
 def test_train(env_leader):
@@ -161,7 +161,7 @@ def test_train(env_leader):
 def print_policy():
     leader_model = PPO.load(f"checkpoints/leader_ppo_{args.env}")
     for o in range(16):
-        o_bin = [int(bit) for bit in np.binary_repr(o, 4)]
+        o_bin = [int(bit) for bit in np.binary_repr(o, 4)][::-1]
         action = leader_model.predict(o_bin, deterministic=True)[0]
         print(f"obs: {o_bin}, act: {action}")
 
