@@ -1,9 +1,12 @@
+import os
+
 import numpy as np
 
 import gymnasium as gym
 from gymnasium import spaces
 
 from stable_baselines3 import PPO
+
 
 class SingleAgentFollowerWrapper(gym.Env):
     def __init__(self, env):
@@ -125,29 +128,39 @@ class InfoSampleSingleAgentFollowerWrapper(SingleAgentFollowerWrapper):
         super().__init__(env)
 
         self.leader_model: PPO = None
-    
+        self.obs_size = self.env.observation_space("leader").n
+
+        obin_file_path = f"stackerlberg/envs/dronegame_obin_size{self.obs_size}.npy"
+        if os.path.isfile(obin_file_path):
+            self.obs_bin = np.load(obin_file_path)
+        else:
+            self.obs_bin = []
+            for o in range(2**self.obs_size):
+                print(o)
+                self.obs_bin.append(
+                    [int(bit) for bit in np.binary_repr(o, self.obs_size)][::-1]
+                )
+            np.save(obin_file_path, self.obs_bin)
+
     def update_leader_model(self, leader_model):
         self.leader_model = leader_model
 
-    def reset(
-        self, leader_response=None, seed=None, options=None
-    ):
-
+    def reset(self, leader_response=None, seed=None, options=None):
         if isinstance(self.env.observation_space("leader"), spaces.Discrete):
             leader_policy = leader_response or [
                 self.leader_model.predict(o, deterministic=False)[0]
-                for o in range(self.env.observation_space("leader").n)
+                for o in range(self.obs_size)
             ]
         elif isinstance(self.env.observation_space("leader"), spaces.MultiBinary):
             if leader_response is not None:
                 leader_policy = leader_response
             else:
-                for o in range(2 ** self.env.observation_space("leader").n):
-                    o_bin = [int(bit) for bit in np.binary_repr(o, self.env.observation_space("leader").n)][::-1]
-                    leader_policy = [
+                leader_policy = []
+                for o in range(2**self.obs_size):
+                    o_bin = self.obs_bin[o]
+                    leader_policy.append(
                         self.leader_model.predict(o_bin, deterministic=False)[0]
-                        for _ in range(2 ** self.env.observation_space("leader").n)
-                    ]
+                    )
 
         self.env.set_leader_response(leader_policy)
         obs = self.env.reset()

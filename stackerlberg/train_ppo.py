@@ -90,7 +90,7 @@ def pretrain(follower_env, config):
         follower_env=follower_env, follower_model=follower_model
     )
 
-    leader_model = PPO("MlpPolicy", leader_env, verbose=1, tensorboard_log=f"runs/{run.id}")
+    leader_model = PPO("MlpPolicy", leader_env, verbose=1)
 
     callback_list = [checkpoint_callback, rmckp_callback]
     if args.log_wandb:
@@ -126,7 +126,7 @@ def test_pretrain(env):
     elif args.env == "dronegame":
         env.env.env.headless = False
         env.env.env.verbose = True
-        leader_response = np.full((2**4,), 0, dtype=int)
+        leader_response = np.full((2**12,), 0, dtype=int)
         # leader_response = np.array(
         #     [0, 3, 0, 3, 3, 0, 3, 0, 0, 0, 3, 3, 0, 3, 0, 3], dtype=int
         #     # [3, 1, 3, 3, 3, 1, 3, 1, 1, 3, 1, 1, 3, 1, 3, 1], dtype=int
@@ -210,17 +210,17 @@ def train(leader_env):
         callback=CallbackList(callback_list),
     )
 
+
 def test_train(leader_env):
     leader_ckppath = f"checkpoints/{args.env}/leader"
-    if not os.listdir(leader_ckppath):
-        leader_model = PPO.load(
-            f"checkpoints/{args.env}/leader_pretrained.zip", env=leader_env
-        )
+    if (not os.path.exists(leader_ckppath)) or (not os.listdir(leader_ckppath)):
+        model_path = f"checkpoints/{args.env}/leader_pretrained.zip"
     else:
         latest_step = _latest_step(leader_ckppath)
-        leader_model = PPO.load(
-            os.path.join(leader_ckppath, f"ppo_{latest_step}_steps.zip"), env=leader_env
-        )
+        model_path = os.path.join(leader_ckppath, f"ppo_{latest_step}_steps.zip")
+
+    leader_model = PPO.load(model_path, env=leader_env)
+    print("Loading model " + model_path + "\n")
 
     if args.env != "matgame":
         leader_env.env.env.headless = False
