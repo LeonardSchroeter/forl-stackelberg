@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 
 from training.ppo.pretrain import build_follower_env, config, checkpoint_path
@@ -7,15 +9,15 @@ def test_pretrain():
 
     env = build_follower_env()
 
-    model, _ = maybe_load_checkpoint_ppo(checkpoint_path + "follower", env)
+    model, _ = maybe_load_checkpoint_ppo(os.path.join(checkpoint_path, "follower"), env)
 
-    if config.env.name == "matgame":
+    if config.env.name == "matrix_game":
         for response in [[1, 1, 1, 1, 1], [0, 0, 0, 0, 0], [0, 0, 0, 1, 1]]:
             for s in range(5):
                 obs = [s, *response]
                 action = model.predict(obs, deterministic=True)[0]
                 print(f"state: {s}, context: {response}, action: {action}")
-    elif config.env.name == "dronegame":
+    elif config.env.name == "drone_game":
         env.plant.headless = False
         leader_response = np.full((2**4,), 1, dtype=int)
         # leader_response = np.array(
@@ -34,3 +36,6 @@ def test_pretrain():
                 break
 
         env.plant.close(video_name="size6_context_drone0.avi")
+
+if __name__ == "__main__":
+    test_pretrain()

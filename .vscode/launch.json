@@ -5,10 +5,22 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "matgame-ppo-pretrain",
+            "name": "matrix-ppo-pretrain",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/training/ppo/pretrain.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--name",
+                    "matrix_game",
+                    ]
+        },
+        {
+            "name": "matrix-ppo-test-pretrain",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/testing/ppo/test_pretrain.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
@@ -32,7 +44,7 @@
             "name": "drone-ppo-test-pretrain",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/training/ppo/test_pretrain.py",
+            "program": "${workspaceFolder}/testing/ppo/test_pretrain.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [

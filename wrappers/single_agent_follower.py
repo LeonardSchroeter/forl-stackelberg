@@ -30,7 +30,9 @@ class SingleAgentFollowerWrapper(gym.Env):
         return [self.leader_act_space.sample() for _ in range(self.leader_obs_size)]
 
     def reset(self, leader_response=None, seed=None, options=None):
-        leader_policy = leader_response or self._get_leader_policy()
+        leader_policy = (
+            self._get_leader_policy() if leader_response is None else leader_response
+        )
         self.env.set_leader_response(leader_policy)
 
         obs = self.env.reset()

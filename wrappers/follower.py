@@ -21,6 +21,10 @@ class FollowerWrapper(BaseParallelWrapper):
         self.num_queries = num_queries
         self.leader_response = leader_response
 
+    @property
+    def plant(self):
+        return self.env
+
     def set_leader_response(self, leader_response: list):
         assert (
             len(leader_response) == self.num_queries

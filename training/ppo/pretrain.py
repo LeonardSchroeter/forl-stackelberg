@@ -45,10 +45,6 @@ config = add_args(config)
 
 checkpoint_path = f"checkpoints/{config.env.name}/ppo"
 
-if config.training.log_wandb:
-    run = wandb.init(project="stackelberg-ppo", sync_tensorboard=True)
-
-
 def build_follower_env():
     if config.env.name == "matrix_game":
         follower_env = FollowerWrapper(
@@ -73,6 +69,10 @@ def build_follower_env():
 
 
 def pretrain(follower_env, pretrain_config):
+    
+    if config.training.log_wandb:
+        run = wandb.init(project="stackelberg-ppo", sync_tensorboard=True)
+    
     follower_model, callback_list = maybe_load_checkpoint_ppo(
         checkpoint_path + "/follower",
         follower_env,
