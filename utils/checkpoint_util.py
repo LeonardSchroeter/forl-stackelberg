@@ -145,10 +145,10 @@ def maybe_load_checkpoint_ppo(
 
     # Resuming
     if os.listdir(checkpoint_path):
-        checkpoint_file = checkpoint_path + f"model_{latest_step}_steps.zip"
+        checkpoint_file = os.path.join(checkpoint_path, f"model_{latest_step}_steps.zip")
         print(f"Loading model from: {checkpoint_file}")
         model = PPO.load(
-            checkpoint_path + f"model_{latest_step}_steps.zip",
+            os.path.join(checkpoint_path, f"model_{latest_step}_steps.zip"),
             env=env,
         )
     # Starting from scratch

@@ -3,14 +3,13 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import numpy as np
-
 from pettingzoo.utils.wrappers import BaseParallelWrapper
 from gymnasium import spaces
+import numpy as np
 
-from envs.matrix_game import IteratedMatrixGame
 
-
+# Wrapper that appends the leader's deterministic policy to the follower's observation
+# Only works for small leader observation spaces
 class FollowerWrapper(BaseParallelWrapper):
     def __init__(self, env, num_queries: int, leader_response: list | None = None):
         assert num_queries > 0, "num_queries must be greater than 0"
@@ -22,10 +21,6 @@ class FollowerWrapper(BaseParallelWrapper):
         self.num_queries = num_queries
         self.leader_response = leader_response
 
-    @property
-    def plant(self):
-        return self.env.plant
-
     def set_leader_response(self, leader_response: list):
         assert (
             len(leader_response) == self.num_queries
@@ -36,49 +31,35 @@ class FollowerWrapper(BaseParallelWrapper):
         if agent == "leader":
             return self.env.observation_space(agent)
 
-        
+        leader_context_dims = [
+            self.env.action_space("leader").n for _ in range(self.num_queries)
+        ]
+
         if isinstance(self.env.observation_space(agent), spaces.Discrete):
-            return spaces.MultiDiscrete(
-                [
-                    self.env.observation_space(agent).n,
-                    *[self.env.action_space("leader").n for _ in range(self.num_queries)],
-                ]
-            )
+            original_dims = [self.env.observation_space(agent).n]
         elif isinstance(self.env.observation_space(agent), spaces.MultiDiscrete):
-            return spaces.MultiDiscrete(
-                [
-                    *self.env.observation_space(agent).nvec,
-                    *[self.env.action_space("leader").n for _ in range(self.num_queries)],
-                ]
-            )
+            original_dims = self.env.observation_space(agent).nvec
+        elif isinstance(self.env.observation_space(agent), spaces.MultiBinary):
+            original_dims = [2] * self.env.observation_space(agent).n
+
+        return spaces.MultiDiscrete([*original_dims, *leader_context_dims])
 
     def reset(self):
         obs = self.env.reset()
-        if isinstance(obs["follower"], int):
-            obs["follower"] = [obs["follower"], *self.leader_response]
-        elif isinstance(obs["follower"], np.ndarray):
-            obs["follower"] = [*obs["follower"], *self.leader_response]
+        if isinstance(obs["follower"], np.ndarray):
+            obs["follower"] = np.concatenate(
+                (obs["follower"], np.array(self.leader_response))
+            )
+        else:
+            obs["follower"] = np.array([obs["follower"], *self.leader_response])
         return obs
 
     def step(self, actions):
         obs, rewards, terminated, truncated, infos = self.env.step(actions)
-        if isinstance(obs["follower"], int):
-            obs["follower"] = [obs["follower"], *self.leader_response]
-        elif isinstance(obs["follower"], np.ndarray):
-            obs["follower"] = [*obs["follower"], *self.leader_response]
+        if isinstance(obs["follower"], np.ndarray):
+            obs["follower"] = np.concatenate(
+                (obs["follower"], np.array(self.leader_response))
+            )
+        else:
+            obs["follower"] = np.array([obs["follower"], *self.leader_response])
         return obs, rewards, terminated, truncated, infos
-
-
-if __name__ == "__main__":
-    env = IteratedMatrixGame(matrix="prisoners_dilemma", episode_length=10, memory=2)
-    env = FollowerWrapper(env, num_queries=3, leader_response=[0, 1, 0])
-    obs = env.reset()
-
-    while True:
-        obs, rewards, terminated, truncated, infos = env.step(
-            {agent: env.action_space(agent).sample() for agent in env.agents}
-        )
-
-        if any(terminated.values()) or any(truncated.values()):
-            break
-    print("Done")
