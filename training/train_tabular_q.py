@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 from envs.matrix_game import IteratedMatrixGame
 from wrappers.follower import FollowerWrapper
-from algorithms.tabular_q import TabularQ
+from algos.tabular_q import TabularQ
 
 
 class Train:

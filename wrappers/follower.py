@@ -7,7 +7,6 @@ import numpy as np
 
 from pettingzoo.utils.wrappers import BaseParallelWrapper
 from gymnasium import spaces
-from gymnasium.spaces import Tuple
 
 from envs.matrix_game import IteratedMatrixGame
 
@@ -22,6 +21,10 @@ class FollowerWrapper(BaseParallelWrapper):
         super().__init__(env)
         self.num_queries = num_queries
         self.leader_response = leader_response
+
+    @property
+    def plant(self):
+        return self.env.plant
 
     def set_leader_response(self, leader_response: list):
         assert (

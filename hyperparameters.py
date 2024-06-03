@@ -1,7 +1,7 @@
 import numpy as np
 from ray import tune
 
-from train import Train
+from stackerlberg.train_tabular_q import Train
 from envs import FollowerWrapper, IteratedMatrixGame
 
 

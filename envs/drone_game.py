@@ -5,7 +5,7 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from typing import List, Tuple
+from typing import Tuple
 
 import time
 
@@ -22,7 +22,7 @@ from gymnasium import spaces
 
 from pettingzoo import ParallelEnv
 
-from util.point import Point2D
+from utils.point import Point2D
 
 
 class DroneGameEnv(MiniGridEnv):
@@ -47,7 +47,7 @@ class DroneGameEnv(MiniGridEnv):
         self.agent_start_dir = agent_start_dir
         self.agent_dir_fixed = agent_dir_fixed
         self.agent_view_size = agent_view_size
-
+        
         self.drone_options = []
         drone_ys = np.arange(3, height + 1, step=drone_dist)
         for y in drone_ys:
@@ -127,11 +127,19 @@ class DroneGame(ParallelEnv):
         self.observation_spaces = {
             "leader": spaces.MultiBinary(self.env.num_divisions),
             "follower": spaces.MultiDiscrete(
-                [self.env.height, *([4] * agent_view_area)]
+                [
+                    self.env.height,
+                    self.env.width,
+                    *([4] * agent_view_area),
+                    *([2] * self.env.num_divisions),
+                    len(self.env.drone_options),
+                ]
             ),
         }
 
         self.drones = []
+
+        self.sleep_time = 0
 
     def action_space(self, agent: str) -> spaces.Space:
         return self.action_spaces[agent]
@@ -143,7 +151,9 @@ class DroneGame(ParallelEnv):
         self.env.reset()
         return {
             "leader": np.zeros(self.env.num_divisions),
-            "follower": np.zeros(len(self.observation_space("follower").nvec)),
+            "follower": np.zeros(
+                len(self.observation_space("follower").nvec)
+            ),
         }
 
     def step(self, actions):
@@ -153,14 +163,18 @@ class DroneGame(ParallelEnv):
 
         observations, rewards = {}, {}
         observations["leader"] = self.get_leader_observation()
-        observations["follower"] = self.get_follower_observation()
+        observations["follower"] = self.get_follower_observation(
+            observations["leader"], actions["leader"]
+        )
         rewards["leader"] = self.get_leader_reward()
         rewards["follower"] = -rewards["leader"]
 
-        terminated = (self.env.agent_pos[0] == self.env.height - 2
-        ) or isinstance(
-            self.env.grid.get(self.env.agent_pos[0], self.env.agent_pos[1]), LavaColored
+        terminated = isinstance(
+            self.env.grid.get(self.env.agent_pos[0], self.env.agent_pos[1]), Goal
         )
+        # ) or isinstance(
+        #     self.env.grid.get(self.env.agent_pos[0], self.env.agent_pos[1]), LavaColored
+        # )
         terminated = {"leader": terminated, "follower": terminated}
         truncated = {"leader": False, "follower": False}
         info = {"leader": {}, "follower": {}}
@@ -177,7 +191,8 @@ class DroneGame(ParallelEnv):
 
         if not self.headless:
             self.env.render()
-            time.sleep(0.5)
+            if self.sleep_time != 0:
+                time.sleep(self.sleep_time)
 
         return observations, rewards, terminated, truncated, info
 
@@ -237,7 +252,7 @@ class DroneGame(ParallelEnv):
             self.env.step_count -= 3
         self.env.render_mode = "human" if not self.headless else None
 
-    def get_follower_observation(self):
+    def get_follower_observation(self, leader_observation, leader_action):
         topX, topY, botX, botY = self.env.get_view_exts()
 
         observation = np.zeros((self.env.agent_view_size, self.env.agent_view_size))
@@ -252,7 +267,18 @@ class DroneGame(ParallelEnv):
                 elif isinstance(self.env.grid.get(i, j), Wall):
                     observation[i_local, j_local] = 3
 
-        return np.insert(observation.flatten(), 0, self.env.agent_pos[1])
+        observation = np.insert(
+            observation.flatten(), 0, self.env.agent_pos[1] / self.env.height
+        )
+        observation = np.insert(observation, 0, self.env.agent_pos[0] / self.env.width)
+
+        observation = np.concatenate((observation, leader_observation), axis=-1)
+        observation = np.append(observation, leader_action)
+
+        return observation
+    
+    def close(self, video_name):
+        self.env.close(video_name)
 
 
 class Drone:

@@ -5,56 +5,40 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Tabular Q-learning",
+            "name": "matgame-ppo-pretrain",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/stackerlberg/train.py",
-            "console": "integratedTerminal",
-        },
-        {
-            "name": "PPO Drone",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/stackerlberg/train_ppo.py",
+            "program": "${workspaceFolder}/training/ppo/pretrain.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
-                    "--headless",
-                    // "--pretrain",
-                    // "--resume_pretrain",
-                    // "--test_pretrain",
-                    // "--train",
-                    "--remove_initseg",
-                    // "--resume_train",
-                    "--test_train",
-                    "--env",
-                    "dronegame",
+                    "--name",
+                    "matrix_game",
                     ]
         },
         {
-            "name": "PPO Mat",
+            "name": "drone-ppo-pretrain",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/stackerlberg/train_ppo.py",
+            "program": "${workspaceFolder}/training/ppo/pretrain.py",
             "console": "integratedTerminal",
-            "args": ["--env",
-                    "matgame"]
+            "justMyCode": false,
+            "args": [
+                    "--name",
+                    "drone_game",
+                    ]
         },
         {
-            "name": "Test Maze",
+            "name": "drone-ppo-test-pretrain",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/stackerlberg/envs/maze_design.py",
-            "justMyCode": false,
+            "program": "${workspaceFolder}/training/ppo/test_pretrain.py",
             "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--name",
+                    "drone_game",
+                    ]
         },
-        {
-            "name": "Test Drone",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/stackerlberg/envs/drone_game.py",
-            "justMyCode": false,
-            "console": "integratedTerminal",
-        }
     ]
 }

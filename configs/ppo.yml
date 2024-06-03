@@ -1,0 +1,27 @@
+# Note: current code only allows config.yml with 2 layers
+env:
+  name: "bandit"
+
+model:
+  architecture: "gru"
+  num_features: 256
+
+training:
+  pretrain_start_lr: 1.0e-3
+  pretrain_end_lr: 1.0e-5
+  pretrain_gamma: 0.95
+  pretrain_ent_coef: 0.0
+  pretrain_batch_size: 128
+  pretrain_n_steps: 512
+  no_initseg: False
+  log_wandb: True
+
+matrix_game:
+  memory: 2
+  episode_len: 10
+
+drone_game:
+  width: 23
+  height: 22
+  drone_dist: 5
+  headless: True # Only for training, testing is always not headless
