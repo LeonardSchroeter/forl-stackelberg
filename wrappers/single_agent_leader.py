@@ -136,13 +136,9 @@ class LeaderWrapperNoInitialSegment(SingleAgentLeaderWrapper):
         random_follower_policy_prob: float = 0.0,
     ):
         super().__init__(
-            env,
-            queries,
-            follower_model,
-            leader_model,
-            follower_epsilon_greedy,
-            epsilon,
+            env, queries, follower_model, follower_epsilon_greedy, epsilon
         )
+        self.leader_model = leader_model
         self.random_follower_policy_prob = random_follower_policy_prob
 
     def set_leader_model(self, leader_model):

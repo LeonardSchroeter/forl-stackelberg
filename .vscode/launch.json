@@ -244,5 +244,57 @@
                     "drone_game",
                     ]
         },
+        {
+            "name": "matrix-ppo-noinitseg-train",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/training/ppo/train_leader.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--name",
+                    "matrix_game",
+                    "--no_initseg",
+                    ]
+        },
+        {
+            "name": "matrix-ppo-test-noinitseg-train",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/testing/ppo/test_leader.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--name",
+                    "matrix_game",
+                    "--no_initseg",
+                    ]
+        },
+        {
+            "name": "drone-ppo-noinitseg-train",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/training/ppo/train_leader.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--name",
+                    "drone_game",
+                    "--no_initseg",
+                    ]
+        },
+        {
+            "name": "drone-ppo-test-noinitseg-train",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/testing/ppo/test_leader.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--name",
+                    "drone_game",
+                    "--no_initseg",
+                    ]
+        },
     ]
 }

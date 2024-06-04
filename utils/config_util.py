@@ -22,6 +22,8 @@ def load_config_args_overwrite(file):
         default=None,
     )
 
+    parser.add_argument("--no_initseg", action="store_true")
+
     args = parser.parse_args()
     for key, value in vars(args).items():
         for key_config, value_config in config.items():

@@ -9,8 +9,13 @@ def test_leader(config):
     env = build_leader_env(config)
 
     model, _ = maybe_load_checkpoint_ppo(
-        os.path.join(config.training.checkpoint_path, "leader"), env
+        os.path.join(config.training.checkpoint_path, "leader_noinitseg")
+        if config.training.no_initseg
+        else os.path.join(config.training.checkpoint_path, "leader"), env
     )
+
+    if config.training.no_initseg:
+        env.set_leader_model(model)
 
     if config.env.name == "drone_game":
         env.plant.headless = False
