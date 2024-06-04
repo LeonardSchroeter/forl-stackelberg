@@ -12,9 +12,7 @@ from wrappers.follower import FollowerWrapper
 from utils.checkpoint_util import maybe_load_checkpoint_ppo
 from utils.config_util import load_config_args_overwrite
 
-config = load_config_args_overwrite("configs/ppo.yml")
-
-def build_follower_env():
+def build_follower_env(config, inner_outer=False):
     if config.env.name == "matrix_game":
         follower_env = FollowerWrapper(
             IteratedMatrixGame(
@@ -32,14 +30,17 @@ def build_follower_env():
         follower_env = FollowerWrapper(
             env=env, num_queries=2 ** env.observation_space("leader").n
         )
-    follower_env = SingleAgentFollowerWrapper(follower_env)
+    if inner_outer:
+        follower_env = FollowerWrapperInfoSample(follower_env)
+    else:
+        follower_env = SingleAgentFollowerWrapper(follower_env)
 
     return follower_env
 
 
-def pretrain(pretrain_config):
+def pretrain(config, pretrain_config):
 
-    follower_env = build_follower_env()
+    follower_env = build_follower_env(config)
     
     if config.training.log_wandb:
         run = wandb.init(project="stackelberg-ppo-follower", sync_tensorboard=True)
@@ -233,6 +234,8 @@ def pretrain(pretrain_config):
 
 if __name__ == "__main__":
 
+    config = config = load_config_args_overwrite("configs/ppo.yml")
+
     pretrain_config = {
         "learning_rate": lambda progress: config.training.pretrain_start_lr
         * (1 - progress)
@@ -243,7 +246,7 @@ if __name__ == "__main__":
         "n_steps": config.training.pretrain_n_steps,
     }
 
-    pretrain(pretrain_config)
+    pretrain(config, pretrain_config)
     # if args.test_pretrain:
     #     test_pretrain(env=follower_env)
 

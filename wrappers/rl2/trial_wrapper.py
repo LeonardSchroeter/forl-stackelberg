@@ -21,6 +21,10 @@ class TrialWrapper(BaseParallelWrapper):
 
         self.current_episode = 0
 
+    @property
+    def plant(self):
+        return self.env
+    
     # Start a fresh episode inside this trial
     # A trial is a sequence of episodes (as in RL^2)
     def _inner_reset(self):

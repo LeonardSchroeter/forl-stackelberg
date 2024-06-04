@@ -5,7 +5,7 @@ from train_ppo import pretrain, build_follower_env
 
 
 def objective(config):
-    follower_env = build_follower_env()
+    follower_env = build_follower_env(config)
     follower_model = pretrain(env=follower_env, config=config)
 
     mean, std = evaluate_policy(

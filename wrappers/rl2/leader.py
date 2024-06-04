@@ -2,13 +2,15 @@ import torch as tc
 import numpy as np
 import gymnasium as gym
 
+from wrappers.rl2.trial_wrapper import TrialWrapper
+
 from utils.constants import DEVICE
 
 
-class SingleAgentLeaderWrapper(gym.Env):
+class SingleAgentLeaderWrapperMetaRL(gym.Env):
     def __init__(
         self,
-        env,
+        env: TrialWrapper,
         follower_policy_net,
     ):
         self.env = env
@@ -22,6 +24,10 @@ class SingleAgentLeaderWrapper(gym.Env):
         self.last_follower_action = None
         self.last_follower_reward = None
         self.last_follower_done = None
+
+    @property
+    def plant(self):
+        return self.env.plant
 
     def _get_next_follower_action(self):
         pi_dist, hidden = self.follower_policy_net(

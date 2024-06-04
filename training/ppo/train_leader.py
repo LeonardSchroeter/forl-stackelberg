@@ -10,16 +10,15 @@ from utils.drone_leader_observation import decimal_to_binary
 
 from training.ppo.pretrain import build_follower_env
 
-config = load_config_args_overwrite("configs/ppo.yml")
-
-
-def build_leader_env():
+def build_leader_env(config, follower_env=None, follower_model=None):
     
-    follower_env = build_follower_env()
+    if follower_env is None:
+        follower_env = build_follower_env(config)
 
-    follower_model, _ = maybe_load_checkpoint_ppo(
-        os.path.join(config.training.checkpoint_path, "follower"), follower_env
-    )
+    if follower_model is None:
+        follower_model, _ = maybe_load_checkpoint_ppo(
+            os.path.join(config.training.checkpoint_path, "follower"), follower_env
+        )
 
     if config.env.name == "matrix_game":
         leader_env = SingleAgentQueryLeaderWrapper(
@@ -42,8 +41,9 @@ def build_leader_env():
     return leader_env
 
 
-def train():
-    leader_env = build_leader_env()
+def train(config):
+
+    leader_env = build_leader_env(config)
 
     if config.training.log_wandb:
         run = wandb.init(project="stackelberg-ppo-leader", sync_tensorboard=True)
@@ -65,4 +65,5 @@ def train():
 
 
 if __name__ == "__main__":
-    train()
+    config = load_config_args_overwrite("configs/ppo.yml")
+    train(config)

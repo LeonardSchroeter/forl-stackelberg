@@ -5,11 +5,8 @@ from utils.config_util import load_config_args_overwrite
 
 from training.ppo.train_leader import build_leader_env
 
-config = load_config_args_overwrite("configs/ppo.yml")
-
-
-def test_leader():
-    env = build_leader_env()
+def test_leader(config):
+    env = build_leader_env(config)
 
     model, _ = maybe_load_checkpoint_ppo(
         os.path.join(config.training.checkpoint_path, "leader"), env
@@ -17,7 +14,7 @@ def test_leader():
 
     if config.env.name == "drone_game":
         env.plant.headless = False
-        # env.plant.sleep_time = 0.7
+        env.plant.sleep_time = 0.5
 
     # play a single episode to check learned leader and follower policies
     obs, _ = env.reset()
@@ -34,4 +31,5 @@ def test_leader():
 
 
 if __name__ == "__main__":
-    test_leader()
+    config = load_config_args_overwrite("configs/ppo.yml")
+    test_leader(config)

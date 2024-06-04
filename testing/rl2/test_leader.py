@@ -1,29 +1,22 @@
 import os
 
-import yaml
+from utils.drone_leader_observation import decimal_to_binary
+from utils.config_util import load_config_args_overwrite
+from utils.checkpoint_util import maybe_load_checkpoint_ppo
+from utils.setup_experiment import create_env, get_policy_net_for_inference
 
-import numpy as np
+from wrappers.rl2.trial_wrapper import TrialWrapper
+from wrappers.rl2.leader import SingleAgentLeaderWrapperMetaRL
 
-# import ppo form stable baselines
-from stable_baselines3 import PPO
+def test_leader(env, config):
 
-from rl2.utils.setup_experiment import create_env, get_policy_net_for_inference
-from rl2.utils.checkpoint_util import _latest_step
-
-from rl2.envs.stackelberg.trial_wrapper import TrialWrapper
-from rl2.envs.stackelberg.leader_env import SingleAgentLeaderWrapper
-
-from train import add_args
-
-def test(env, config):
-
-    model_dir = "checkpoints/leader"
-    latest_step = _latest_step(model_dir)
-    model = PPO.load(f"checkpoints/leader/model_{latest_step}_steps.zip")
+    model, _ = maybe_load_checkpoint_ppo(
+        os.path.join(config.training.checkpoint_path, "leader"), env
+    )
 
     if config.env.name == "drone_game":
-        env.env.env.headless = False
-        env.env.env.sleep_time = 0.5
+        env.plant.headless = False
+        env.plant.sleep_time = 0.5
 
     obs, _ = env.reset()
     while True:
@@ -40,23 +33,20 @@ def test(env, config):
         ]
         print(leader_policy)
     elif config.env.name == "drone_game":
-        for o in range(16):
-            o_bin = [int(bit) for bit in np.binary_repr(o, 4)][::-1]
+        for o in range(2 ** env.observation_space.n):
+            o_bin = decimal_to_binary(o, width=env.observation_space.n)
             action = model.predict(o_bin, deterministic=True)[0]
             print(f"obs: {o_bin}, act: {action}")
 
-if __name__ == "__main__":
-    file_dir = os.path.abspath(os.path.dirname(__file__))
-    with open(os.path.join(file_dir, "rl2", "envs", "config.yml"), "rb") as file:
-        config = yaml.safe_load(file.read())
 
-    config = add_args(config)
+if __name__ == "__main__":
+    config = load_config_args_overwrite("configs/rl2.yml")
 
     follower_env = create_env(config=config)
 
     policy_net = get_policy_net_for_inference(follower_env, config)
 
     env = TrialWrapper(follower_env._env, num_episodes=3)
-    env = SingleAgentLeaderWrapper(env, follower_policy_net=policy_net)
-    
-    test(env, config)
+    env = SingleAgentLeaderWrapperMetaRL(env, follower_policy_net=policy_net)
+
+    test_leader(env, config)

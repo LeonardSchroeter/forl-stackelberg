@@ -6,11 +6,8 @@ from training.ppo.pretrain import build_follower_env
 from utils.checkpoint_util import maybe_load_checkpoint_ppo
 from utils.config_util import load_config_args_overwrite
 
-config = load_config_args_overwrite("configs/ppo.yml")
-
-
-def test_pretrain():
-    env = build_follower_env()
+def test_pretrain(config):
+    env = build_follower_env(config)
 
     model, _ = maybe_load_checkpoint_ppo(
         os.path.join(config.training.checkpoint_path, "follower"), env
@@ -44,4 +41,5 @@ def test_pretrain():
 
 
 if __name__ == "__main__":
-    test_pretrain()
+    config = load_config_args_overwrite("configs/ppo.yml")
+    test_pretrain(config)

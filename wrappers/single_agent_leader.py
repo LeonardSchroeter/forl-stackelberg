@@ -26,6 +26,9 @@ class SingleAgentLeaderWrapper(gym.Env):
     @property
     def plant(self):
         return self.env.plant
+    
+    def update_follower_model(self, follower_model):
+        self.follower_model = follower_model
 
     def _get_next_follower_action(self):
         if self.follower_epsilon_greedy and np.random.rand() < self.epsilon:

@@ -196,5 +196,53 @@
                     "drone_game",
                     ]
         },
+        {
+            "name": "matrix-ppo-inner-outer",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/training/ppo/inner_outer.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--name",
+                    "matrix_game",
+                    ]
+        },
+        {
+            "name": "matrix-ppo-test-inner-outer",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/testing/ppo/inner_outer.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--name",
+                    "matrix_game",
+                    ]
+        },
+        {
+            "name": "drone-ppo-inner-outer",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/training/ppo/inner_outer.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--name",
+                    "drone_game",
+                    ]
+        },
+        {
+            "name": "drone-ppo-test-inner-outer",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/testing/ppo/inner_outer.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--name",
+                    "drone_game",
+                    ]
+        },
     ]
 }
