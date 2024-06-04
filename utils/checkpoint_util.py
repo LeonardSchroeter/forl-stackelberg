@@ -17,7 +17,6 @@ from stable_baselines3.common.callbacks import (
 )
 from wandb.integration.sb3 import WandbCallback
 
-
 def _format_name(kind, steps):
     filename = f"{kind}_{steps}.pth"
     return filename
@@ -122,7 +121,7 @@ def maybe_load_checkpoint_rl2(
 
 
 def maybe_load_checkpoint_ppo(
-    checkpoint_path, env, log_wandb=False, training_config=None, run_id=0
+    checkpoint_path, env, log_wandb=False, training_config={}, run_id=0
 ):
     if not os.path.exists(checkpoint_path):
         os.makedirs(checkpoint_path)

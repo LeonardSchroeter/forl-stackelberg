@@ -2,14 +2,19 @@ import os
 
 import numpy as np
 
-from training.ppo.pretrain import build_follower_env, config, checkpoint_path
+from training.ppo.pretrain import build_follower_env
 from utils.checkpoint_util import maybe_load_checkpoint_ppo
+from utils.config_util import load_config_args_overwrite
+
+config = load_config_args_overwrite("configs/ppo.yml")
+
 
 def test_pretrain():
-
     env = build_follower_env()
 
-    model, _ = maybe_load_checkpoint_ppo(os.path.join(checkpoint_path, "follower"), env)
+    model, _ = maybe_load_checkpoint_ppo(
+        os.path.join(config.training.checkpoint_path, "follower"), env
+    )
 
     if config.env.name == "matrix_game":
         for response in [[1, 1, 1, 1, 1], [0, 0, 0, 0, 0], [0, 0, 0, 1, 1]]:
@@ -35,7 +40,8 @@ def test_pretrain():
             if terminated or truncated:
                 break
 
-        env.plant.close(video_name="size6_context_drone0.avi")
+        env.plant.close(video_name=config.drone_game.video_name)
+
 
 if __name__ == "__main__":
     test_pretrain()

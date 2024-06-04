@@ -7,6 +7,7 @@ model:
   num_features: 256
 
 training:
+  algo_name: "ppo"
   pretrain_start_lr: 1.0e-3
   pretrain_end_lr: 1.0e-5
   pretrain_gamma: 0.95
@@ -25,3 +26,4 @@ drone_game:
   height: 22
   drone_dist: 5
   headless: True # Only for training, testing is always not headless
+  video_name: "size6_context_drone0.avi"

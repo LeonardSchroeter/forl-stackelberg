@@ -73,8 +73,8 @@ class SingleAgentQueryLeaderWrapper(SingleAgentLeaderWrapper):
         follower_epsilon_greedy: bool = False,
         epsilon: float = 0.1,
     ):
-        super.__init__(
-            self, env, queries, follower_model, follower_epsilon_greedy, epsilon
+        super().__init__(
+            env, queries, follower_model, follower_epsilon_greedy, epsilon
         )
 
     def reset(self, seed=None, options=None):
@@ -128,8 +128,7 @@ class LeaderWrapperNoInitialSegment(SingleAgentLeaderWrapper):
         epsilon: float = 0.1,
         random_follower_policy_prob: float = 0.0,
     ):
-        super.__init__(
-            self,
+        super().__init__(
             env,
             queries,
             follower_model,

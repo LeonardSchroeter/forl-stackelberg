@@ -7,7 +7,7 @@ from typing import Tuple
 
 from envs.rl2.abstract import MetaEpisodicEnv
 from envs.drone_game import DroneGame
-from utils.drone_game_obs import binary_to_decimal
+from utils.drone_leader_observation import binary_to_decimal
 
 class DroneGameFollowerEnv(MetaEpisodicEnv):
     def __init__(self, env: DroneGame):

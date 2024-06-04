@@ -1,9 +1,5 @@
 import os
 
-from stable_baselines3 import PPO
-import numpy as np
-import yaml
-import argparse
 import wandb
 
 from envs.matrix_game import IteratedMatrixGame
@@ -14,36 +10,9 @@ from wrappers.single_agent_follower import *
 from wrappers.follower import FollowerWrapper
 
 from utils.checkpoint_util import maybe_load_checkpoint_ppo
+from utils.config_util import load_config_args_overwrite
 
-
-def add_args(config):
-    parser = argparse.ArgumentParser(description="""Pretraining script for PPO.""")
-
-    parser.add_argument(
-        "--name",
-        choices=["bandit", "tabular_mdp", "matrix_game", "drone_game",
-        ],
-        default="bandit",
-    )
-
-    args = parser.parse_args()
-    for key, value in vars(args).items():
-        for key_config, value_config in config.items():
-            if key in value_config.keys():
-                config[key_config][key] = value
-
-    for key in config.keys():
-        config[key] = argparse.Namespace(**config[key])
-    config = argparse.Namespace(**config)
-
-    return config
-
-
-with open("configs/ppo.yml", "rb") as file:
-    config = yaml.safe_load(file.read())
-config = add_args(config)
-
-checkpoint_path = f"checkpoints/{config.env.name}/ppo"
+config = load_config_args_overwrite("configs/ppo.yml")
 
 def build_follower_env():
     if config.env.name == "matrix_game":
@@ -68,13 +37,15 @@ def build_follower_env():
     return follower_env
 
 
-def pretrain(follower_env, pretrain_config):
+def pretrain(pretrain_config):
+
+    follower_env = build_follower_env()
     
     if config.training.log_wandb:
-        run = wandb.init(project="stackelberg-ppo", sync_tensorboard=True)
+        run = wandb.init(project="stackelberg-ppo-follower", sync_tensorboard=True)
     
     follower_model, callback_list = maybe_load_checkpoint_ppo(
-        checkpoint_path + "/follower",
+        os.path.join(config.training.checkpoint_path, "follower"),
         follower_env,
         config.training.log_wandb,
         pretrain_config,
@@ -90,7 +61,7 @@ def pretrain(follower_env, pretrain_config):
     # for _ in range(100):
     # follower_env.update_leader_model(leader_model)
     follower_model.learn(
-        total_timesteps=30000,
+        total_timesteps=300_00,
         reset_num_timesteps=False,
         callback=callback_list,
     )
@@ -261,7 +232,6 @@ def pretrain(follower_env, pretrain_config):
 
 
 if __name__ == "__main__":
-    follower_env = build_follower_env()
 
     pretrain_config = {
         "learning_rate": lambda progress: config.training.pretrain_start_lr
@@ -273,7 +243,7 @@ if __name__ == "__main__":
         "n_steps": config.training.pretrain_n_steps,
     }
 
-    pretrain(follower_env=follower_env, pretrain_config=pretrain_config)
+    pretrain(pretrain_config)
     # if args.test_pretrain:
     #     test_pretrain(env=follower_env)
 

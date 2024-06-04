@@ -4,7 +4,7 @@ from gymnasium import spaces
 from stable_baselines3 import PPO
 
 from wrappers.follower import FollowerWrapper
-from utils.drone_game_obs import *
+from utils.drone_leader_observation import *
 
 
 class SingleAgentFollowerWrapper(gym.Env):
