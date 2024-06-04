@@ -181,7 +181,7 @@ def training_loop(
         None
     """
     if comm.Get_rank() == ROOT_RANK:
-        run = wandb.init(project='rl2', mode="online" if log_wandb else "disabled")
+        run = wandb.init(project='stackelberg-rl2-follower', mode="online" if log_wandb else "disabled")
 
     meta_ep_returns = deque(maxlen=1000)
 

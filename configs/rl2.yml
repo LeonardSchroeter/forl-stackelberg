@@ -6,9 +6,9 @@ env:
 model:
   architecture: "gru"
   num_features: 256
-  model_name: "defaults"
 
 training:
+  algo_name: "rl2"
   max_pol_iters: 12000
   meta_episodes_per_policy_update: 3
   meta_episodes_per_learner_batch: 60

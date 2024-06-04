@@ -9,7 +9,7 @@ from utils.constants import DEVICE
 def evaluate(config, policy_net=None, leader_policy=None, verbose=False):
     # create env.
     env = create_env(config=config)
-    if config.env.name == "drone_game_follower":
+    if config.env.name == "drone_game":
         assert (
             len(leader_policy) == 2**env._env.env.num_divisions
         ), "Leader policy size is not correct."
@@ -59,8 +59,9 @@ def evaluate(config, policy_net=None, leader_policy=None, verbose=False):
                 current_episode += 1
                 if current_episode >= config.env.num_meta_episodes:
                     break
-
-        env._env.env.close(video_name="size6_rnn.avi")
+        
+        if config.env.name == "drone_game":
+            env._env.close(video_name="size6_rnn.avi")
 
         return np.sum(rewards)
 

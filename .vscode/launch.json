@@ -100,5 +100,101 @@
                     "drone_game",
                     ]
         },
+        {
+            "name": "matrix-rl2-pretrain",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/training/rl2/pretrain.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--name",
+                    "matrix_game",
+                    ]
+        },
+        {
+            "name": "matrix-rl2-test-pretrain",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/testing/rl2/test_pretrain.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--name",
+                    "matrix_game",
+                    ]
+        },
+        {
+            "name": "drone-rl2-pretrain",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/training/rl2/pretrain.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--name",
+                    "drone_game",
+                    ]
+        },
+        {
+            "name": "drone-rl2-test-pretrain",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/testing/rl2/test_pretrain.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--name",
+                    "drone_game",
+                    ]
+        },
+        {
+            "name": "matrix-rl2-train",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/training/rl2/train_leader.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--name",
+                    "matrix_game",
+                    ]
+        },
+        {
+            "name": "matrix-rl2-test-train",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/testing/rl2/test_leader.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--name",
+                    "matrix_game",
+                    ]
+        },
+        {
+            "name": "drone-rl2-train",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/training/rl2/train_leader.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--name",
+                    "drone_game",
+                    ]
+        },
+        {
+            "name": "drone-rl2-test-train",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/testing/rl2/test_leader.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--name",
+                    "drone_game",
+                    ]
+        },
     ]
 }

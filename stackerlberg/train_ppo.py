@@ -52,7 +52,7 @@ def build_follower_env():
 
 
 def pretrain(env):
-    run_follower = wandb.init(project="stackerlberg-follower", sync_tensorboard=True)
+    run_follower = wandb.init(project="stackelberg-ppo-follower", sync_tensorboard=True)
     model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=f"runs/{run_follower.id}")
     model.learn(
         total_timesteps=50_000,
@@ -105,7 +105,7 @@ def build_leader_env(follower_model):
 
 
 def train(env_leader):
-    run_leader = wandb.init(project="stackerlberg-leader", sync_tensorboard=True)
+    run_leader = wandb.init(project="stackelberg-ppo-leader", sync_tensorboard=True)
     leader_model = PPO(
         "MlpPolicy", env_leader, verbose=1, tensorboard_log=f"runs/{run_leader.id}"
     )

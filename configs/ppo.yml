@@ -1,6 +1,6 @@
 # Note: current code only allows config.yml with 2 layers
 env:
-  name: "bandit"
+  name: "drone_game"
 
 model:
   architecture: "gru"

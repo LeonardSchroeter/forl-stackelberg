@@ -19,17 +19,17 @@ def load_config_args_overwrite(file):
             "matrix_game",
             "drone_game",
         ],
-        default="bandit",
+        default=None,
     )
 
     args = parser.parse_args()
     for key, value in vars(args).items():
         for key_config, value_config in config.items():
-            if key in value_config.keys():
+            if key in value_config.keys() and (value is not None):
                 config[key_config][key] = value
 
     config["training"]["checkpoint_path"] = os.path.join(
-        f"checkpoints/{config["env"]["name"]}", config["training"]["algo_name"]
+        "checkpoints", config["env"]["name"], config["training"]["algo_name"]
     )
 
     for key in config.keys():

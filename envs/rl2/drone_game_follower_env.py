@@ -18,7 +18,7 @@ class DroneGameFollowerEnv(MetaEpisodicEnv):
 
     @property
     def name(self):
-        return "drone_game_follower"
+        return "drone_game"
 
     @property
     def max_episode_len(self):

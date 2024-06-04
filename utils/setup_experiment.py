@@ -22,7 +22,7 @@ from rl2_agents.integration.policy_net import StatefulPolicyNet
 from rl2_agents.integration.value_net import StatefulValueNet
 
 from utils.constants import DEVICE
-from utils.checkpoint_util import maybe_load_checkpoint
+from utils.checkpoint_util import maybe_load_checkpoint_rl2
 
 
 def create_env(config):
@@ -34,7 +34,7 @@ def create_env(config):
             num_actions=config.mdp.num_actions,
             max_episode_length=config.mdp.episode_len,
         )
-    if config.env.name == "matrix_game_follower":
+    if config.env.name == "matrix_game":
         return MatGameFollowerEnv(
             env=IteratedMatrixGame(
                 matrix="prisoners_dilemma",
@@ -42,7 +42,7 @@ def create_env(config):
                 memory=config.matrix_game.memory,
             )
         )
-    if config.env.name == "drone_game_follower":
+    if config.env.name == "drone_game":
         return DroneGameFollowerEnv(
             env=DroneGame(
                 env=DroneGameEnv(
@@ -59,9 +59,9 @@ def create_env(config):
 def create_preprocessing(env):
     if env.name == "bandit":
         return MABPreprocessing(num_actions=env.num_actions)
-    if (env.name == "tabular_mdp") or (env.name == "matrix_game_follower"):
+    if (env.name == "tabular_mdp") or (env.name == "matrix_game"):
         return MDPPreprocessing(num_states=env.num_states, num_actions=env.num_actions)
-    if env.name == "drone_game_follower":
+    if env.name == "drone_game":
         return DGFPreprocessing(
             num_states=env.num_states,
             dim_states=env.dim_states,
@@ -155,9 +155,9 @@ def get_policy_net_for_inference(env, config):
     policy_net = policy_net.to(DEVICE)
 
     # load checkpoint, if applicable.
-    maybe_load_checkpoint(
-        checkpoint_dir=config.model.checkpoint_dir,
-        model_name=f"{config.model.model_name}/policy_net",
+    maybe_load_checkpoint_rl2(
+        checkpoint_dir=config.training.checkpoint_path,
+        model_name=f"follower/policy_net",
         model=policy_net,
         optimizer=None,
         scheduler=None,

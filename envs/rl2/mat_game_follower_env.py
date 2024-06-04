@@ -20,7 +20,7 @@ class MatGameFollowerEnv(MetaEpisodicEnv):
 
     @property
     def name(self):
-        return "matrix_game_follower"
+        return "matrix_game"
 
     @property
     def max_episode_len(self):
