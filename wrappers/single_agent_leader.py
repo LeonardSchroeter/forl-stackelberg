@@ -23,6 +23,10 @@ class SingleAgentLeaderWrapper(gym.Env):
         self.action_space = env.action_space("leader")
         self.observation_space = env.observation_space("leader")
 
+    @property
+    def plant(self):
+        return self.env.plant
+
     def _get_next_follower_action(self):
         if self.follower_epsilon_greedy and np.random.rand() < self.epsilon:
             return self.env.action_space("follower").sample()

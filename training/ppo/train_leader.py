@@ -8,12 +8,13 @@ from utils.checkpoint_util import maybe_load_checkpoint_ppo
 from utils.config_util import load_config_args_overwrite
 from utils.drone_leader_observation import decimal_to_binary
 
-from pretrain import build_follower_env
+from training.ppo.pretrain import build_follower_env
 
 config = load_config_args_overwrite("configs/ppo.yml")
 
 
 def build_leader_env():
+    
     follower_env = build_follower_env()
 
     follower_model, _ = maybe_load_checkpoint_ppo(
