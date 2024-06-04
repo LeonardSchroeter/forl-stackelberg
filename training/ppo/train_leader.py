@@ -79,8 +79,6 @@ def train(config):
         callback=callback_list,
     )
 
-    return leader_model
-
 
 if __name__ == "__main__":
     config = load_config_args_overwrite("configs/ppo.yml")
