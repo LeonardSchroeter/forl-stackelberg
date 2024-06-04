@@ -26,7 +26,7 @@ def build_leader_env():
             queries=[0, 1, 2, 3, 4],
             follower_model=follower_model,
         )
-    else:
+    elif config.env.name == "drone_game":
         num_queries = 2 ** follower_env.env.observation_space("leader").n
         queries = [
             decimal_to_binary(o, width=follower_env.env.observation_space("leader").n)

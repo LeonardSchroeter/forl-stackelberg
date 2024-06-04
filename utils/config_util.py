@@ -22,15 +22,15 @@ def load_config_args_overwrite(file):
         default="bandit",
     )
 
-    config["training"]["checkpoint_path"] = os.path.join(
-        f"checkpoints/{config["env"]["name"]}", config["training"]["algo_name"]
-    )
-
     args = parser.parse_args()
     for key, value in vars(args).items():
         for key_config, value_config in config.items():
             if key in value_config.keys():
                 config[key_config][key] = value
+
+    config["training"]["checkpoint_path"] = os.path.join(
+        f"checkpoints/{config["env"]["name"]}", config["training"]["algo_name"]
+    )
 
     for key in config.keys():
         config[key] = argparse.Namespace(**config[key])
