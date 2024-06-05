@@ -5,11 +5,10 @@ import yaml
 import argparse
 
 
-def load_config_args_overwrite(file):
-    with open(file, "rb") as file:
-        config = yaml.safe_load(file.read())
+def load_config_args_overwrite(file=None, parser=None):
 
-    parser = argparse.ArgumentParser()
+    if parser is None:
+        parser = argparse.ArgumentParser()
 
     parser.add_argument(
         "--name",
@@ -23,9 +22,18 @@ def load_config_args_overwrite(file):
     )
 
     parser.add_argument("--no_initseg", action="store_true")
-    parser.add_argument("--rl2_inner_outer", action="store_true")
+    parser.add_argument("--inner_outer", action="store_true")
+    parser.add_argument("--no_initseg_test", action="store_true")
+    parser.add_argument("--inner_outer_test", action="store_true")
+    parser.add_argument("--leader_test_env", action="store_true")    
 
     args = parser.parse_args()
+
+    if file is None:
+        file = f"configs/{args.algo}.yml"
+    with open(file, "rb") as f:
+        config = yaml.safe_load(f.read())
+
     for key, value in vars(args).items():
         for key_config, value_config in config.items():
             if key in value_config.keys() and (value is not None):

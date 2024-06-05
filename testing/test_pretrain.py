@@ -6,12 +6,16 @@ from training.ppo.pretrain import build_follower_env
 from utils.checkpoint_util import maybe_load_checkpoint_ppo
 from utils.config_util import load_config_args_overwrite
 
-def test_pretrain(config):
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--algo", choices=["ppo", "rl2"], default="rl2")
+
+
+def test_pretrain(config, checkpoint_path):
     env = build_follower_env(config)
 
-    model, _ = maybe_load_checkpoint_ppo(
-        os.path.join(config.training.checkpoint_path, "follower"), env
-    )
+    model, _ = maybe_load_checkpoint_ppo(checkpoint_path, env)
 
     if config.env.name == "matrix_game":
         for response in [[1, 1, 1, 1, 1], [0, 0, 0, 0, 0], [0, 0, 0, 1, 1]]:
@@ -21,7 +25,7 @@ def test_pretrain(config):
                 print(f"state: {s}, context: {response}, action: {action}")
     elif config.env.name == "drone_game":
         env.plant.headless = False
-        leader_response = np.full((2**4,), 1, dtype=int)
+        leader_response = np.full((2**4,), 2, dtype=int)
         # leader_response = np.array(
         #     [0, 3, 0, 3, 3, 0, 3, 0, 0, 0, 3, 3, 0, 3, 0, 3], dtype=int
         #     # [3, 1, 3, 3, 3, 1, 3, 1, 1, 3, 1, 1, 3, 1, 3, 1], dtype=int
@@ -41,5 +45,16 @@ def test_pretrain(config):
 
 
 if __name__ == "__main__":
-    config = load_config_args_overwrite("configs/ppo.yml")
-    test_pretrain(config)
+    config = load_config_args_overwrite(parser=parser)
+    if config.testing.inner_outer_test:
+        test_pretrain(
+            config,
+            checkpoint_path=os.path.join(
+                config.training.checkpoint_path, "inner_outer", "follower"
+            ),
+        )
+    else:
+        test_pretrain(
+            config,
+            checkpoint_path=os.path.join(config.training.checkpoint_path, "follower"),
+        )

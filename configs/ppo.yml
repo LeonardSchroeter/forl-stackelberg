@@ -1,4 +1,5 @@
 # Note: current code only allows config.yml with 2 layers
+# And cannot add config parameters with same names but under different parents
 env:
   name: "drone_game"
 
@@ -16,6 +17,11 @@ training:
   pretrain_n_steps: 512
   no_initseg: False
   log_wandb: True
+
+testing:
+  no_initseg_test: False
+  inner_outer_test: False
+  leader_test_env: True
 
 matrix_game:
   memory: 2
