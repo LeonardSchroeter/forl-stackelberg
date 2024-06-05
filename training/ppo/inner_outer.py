@@ -63,13 +63,13 @@ def train(config, follower_training_config):
     for _ in range(100):
         
         follower_model.learn(
-            total_timesteps=30_000,
+            total_timesteps=5000,
             reset_num_timesteps=False,
             callback=follower_callback_list,
         )
         
         leader_model.learn(
-            total_timesteps=10_000,
+            total_timesteps=1000,
             reset_num_timesteps=False,
             callback=leader_callback_list,
         )

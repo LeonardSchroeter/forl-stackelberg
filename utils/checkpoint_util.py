@@ -121,7 +121,7 @@ def maybe_load_checkpoint_rl2(
 
 
 def maybe_load_checkpoint_ppo(
-    checkpoint_path, env, log_wandb=False, training_config={}, run_id=0
+    checkpoint_path, env, log_wandb=False, training_config={}, run_id=0, save_freq=1000
 ):
     if not os.path.exists(checkpoint_path):
         os.makedirs(checkpoint_path)

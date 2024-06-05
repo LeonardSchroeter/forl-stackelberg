@@ -196,6 +196,7 @@ def main():
             os.path.join(config.training.checkpoint_path, "inner_outer", "leader"),
             leader_env,
             training_config=training_config,
+            save_freq=10,
         )
         env.set_leader_model(leader_model)
     else:
