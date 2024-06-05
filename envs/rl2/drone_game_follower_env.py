@@ -7,13 +7,12 @@ from typing import Tuple
 
 from envs.rl2.abstract import MetaEpisodicEnv
 from envs.drone_game import DroneGame
-from utils.drone_leader_observation import binary_to_decimal
+from utils.drone_leader_observation import binary_to_decimal, decimal_to_binary
+
 
 class DroneGameFollowerEnv(MetaEpisodicEnv):
     def __init__(self, env: DroneGame):
-        
         self._env = env
-        self.new_env()
         self._state = 0
 
     @property
@@ -101,3 +100,22 @@ class DroneGameFollowerEnv(MetaEpisodicEnv):
             s_tp1 = self.reset()
 
         return s_tp1, r_t, done_t, {}
+
+
+class DroneGameFollowerInfoSample(DroneGameFollowerEnv):
+    def __init__(self, env: DroneGame):
+        super().__init__(env)
+
+    def set_leader_model(self, leader_model):
+        self.leader_model = leader_model
+
+    def _preprocess_observation(self, obs):
+        return decimal_to_binary(obs, width=self._env.observation_space("leader").n)
+
+    def _new_leader_policy(self):
+        self._leader_response = [
+            self.leader_model.predict(
+                self._preprocess_observation(o), deterministic=False
+            )[0]
+            for o in range(2 ** self._env.observation_space("leader").n)
+        ]

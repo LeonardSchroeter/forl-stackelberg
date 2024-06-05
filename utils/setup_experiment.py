@@ -4,7 +4,11 @@ from envs.rl2.mat_game_follower_env import (
     MatGameFollowerEnv,
     IteratedMatrixGame,
 )
-from envs.rl2.drone_game_follower_env import DroneGameFollowerEnv, DroneGame
+from envs.rl2.drone_game_follower_env import (
+    DroneGameFollowerEnv,
+    DroneGameFollowerInfoSample,
+    DroneGame,
+)
 from envs.drone_game import DroneGameEnv
 
 from rl2_agents.preprocessing.tabular import (
@@ -43,16 +47,20 @@ def create_env(config):
             )
         )
     if config.env.name == "drone_game":
-        return DroneGameFollowerEnv(
-            env=DroneGame(
-                env=DroneGameEnv(
-                    width=config.drone_game.width,
-                    height=config.drone_game.height,
-                    drone_dist=config.drone_game.drone_dist,
-                ),
-                headless=config.drone_game.headless,
-            )
+        env = DroneGame(
+            env=DroneGameEnv(
+                width=config.drone_game.width,
+                height=config.drone_game.height,
+                drone_dist=config.drone_game.drone_dist,
+            ),
+            headless=config.drone_game.headless,
         )
+        return (
+            DroneGameFollowerInfoSample(env)
+            if config.training.rl2_inner_outer
+            else DroneGameFollowerEnv(env)
+        )
+
     raise NotImplementedError
 
 
@@ -157,7 +165,9 @@ def get_policy_net_for_inference(env, config):
     # load checkpoint, if applicable.
     maybe_load_checkpoint_rl2(
         checkpoint_dir=config.training.checkpoint_path,
-        model_name=f"follower/policy_net",
+        model_name="inner_outer/follower/policy_net"
+        if config.training.rl2_inner_outer
+        else "follower/policy_net",
         model=policy_net,
         optimizer=None,
         scheduler=None,

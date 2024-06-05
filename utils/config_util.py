@@ -23,6 +23,7 @@ def load_config_args_overwrite(file):
     )
 
     parser.add_argument("--no_initseg", action="store_true")
+    parser.add_argument("--rl2_inner_outer", action="store_true")
 
     args = parser.parse_args()
     for key, value in vars(args).items():

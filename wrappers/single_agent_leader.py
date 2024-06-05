@@ -27,7 +27,7 @@ class SingleAgentLeaderWrapper(gym.Env):
     def plant(self):
         return self.env.plant
     
-    def update_follower_model(self, follower_model):
+    def set_follower_model(self, follower_model):
         self.follower_model = follower_model
 
     def _get_next_follower_action(self):

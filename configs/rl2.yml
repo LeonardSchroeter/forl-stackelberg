@@ -22,6 +22,7 @@ training:
   adam_eps: 1.0e-5
   adam_wd: 0.01
   log_wandb: True
+  rl2_inner_outer: False
 
 bandit:
   num_actions: 5

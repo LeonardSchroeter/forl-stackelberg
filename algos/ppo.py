@@ -10,6 +10,8 @@ import torch as tc
 import numpy as np
 import wandb
 from mpi4py import MPI
+from stable_baselines3 import PPO
+from stable_baselines3.common.callbacks import CallbackList
 
 from envs.rl2.abstract import MetaEpisodicEnv
 from rl2_agents.integration.policy_net import StatefulPolicyNet
@@ -148,6 +150,9 @@ def training_loop(
         value_checkpoint_fn: Callable[[int], None],
         comm: type(MPI.COMM_WORLD),
         log_wandb: bool,
+        inner_outer: bool,
+        leader_callback_list: CallbackList,
+        leader_model: PPO=None,
     ) -> None:
     """
     Train a stateful RL^2 agent via PPO to maximize discounted cumulative reward
@@ -279,3 +284,10 @@ def training_loop(
             print("-" * 100)
             policy_checkpoint_fn(pol_iter + 1)
             value_checkpoint_fn(pol_iter + 1)
+
+        if inner_outer:
+            leader_model.learn(
+                total_timesteps=128,
+                callback=leader_callback_list,
+                reset_num_timesteps=False,
+            )

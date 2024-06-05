@@ -8,10 +8,13 @@ from utils.setup_experiment import create_env, get_policy_net_for_inference
 from wrappers.rl2.trial_wrapper import TrialWrapper
 from wrappers.rl2.leader import SingleAgentLeaderWrapperMetaRL
 
-def test_leader(env, config):
 
+def test(env, config):
     model, _ = maybe_load_checkpoint_ppo(
-        os.path.join(config.training.checkpoint_path, "leader"), env
+        os.path.join(config.training.checkpoint_path, "inner_outer", "leader")
+        if config.training.rl2_inner_outer
+        else os.path.join(config.training.checkpoint_path, "leader"),
+        env,
     )
 
     if config.env.name == "drone_game":
@@ -33,7 +36,7 @@ def test_leader(env, config):
         ]
         print(leader_policy)
     elif config.env.name == "drone_game":
-        for o in range(2 ** env.observation_space.n):
+        for o in range(2**env.observation_space.n):
             o_bin = decimal_to_binary(o, width=env.observation_space.n)
             action = model.predict(o_bin, deterministic=True)[0]
             print(f"obs: {o_bin}, act: {action}")
@@ -49,4 +52,4 @@ if __name__ == "__main__":
     env = TrialWrapper(follower_env._env, num_episodes=3)
     env = SingleAgentLeaderWrapperMetaRL(env, follower_policy_net=policy_net)
 
-    test_leader(env, config)
+    test(env, config)

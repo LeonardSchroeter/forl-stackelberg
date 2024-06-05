@@ -81,7 +81,7 @@ class FollowerWrapperInfoSample(SingleAgentFollowerWrapper):
         elif isinstance(self.leader_obs_space, spaces.MultiBinary):
             return decimal_to_binary(obs, width=self.leader_obs_space.n)
 
-    def update_leader_model(self, leader_model: PPO):
+    def set_leader_model(self, leader_model: PPO):
         self.leader_model = leader_model
 
     def _get_leader_policy(self):

@@ -104,7 +104,7 @@
             "name": "matrix-rl2-pretrain",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/training/rl2/pretrain.py",
+            "program": "${workspaceFolder}/training/rl2/pretrain_or_inner_outer.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
@@ -128,7 +128,7 @@
             "name": "drone-rl2-pretrain",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/training/rl2/pretrain.py",
+            "program": "${workspaceFolder}/training/rl2/pretrain_or_inner_outer.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
@@ -164,7 +164,7 @@
             "name": "matrix-rl2-test-train",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/testing/rl2/test_leader.py",
+            "program": "${workspaceFolder}/testing/rl2/test_leader_or_inner_outer.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
@@ -188,7 +188,7 @@
             "name": "drone-rl2-test-train",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/testing/rl2/test_leader.py",
+            "program": "${workspaceFolder}/testing/rl2/test_leader_or_inner_outer.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
@@ -294,6 +294,58 @@
                     "--name",
                     "drone_game",
                     "--no_initseg",
+                    ]
+        },
+        {
+            "name": "matrix-rl2-inner-outer",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/training/rl2/pretrain_or_inner_outer.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--name",
+                    "matrix_game",
+                    "--rl2_inner_outer",
+                    ]
+        },
+        {
+            "name": "matrix-rl2-test-inner-outer",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/testing/rl2/test_leader_or_inner_outer.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--name",
+                    "matrix_game",
+                    "--rl2_inner_outer",
+                    ]
+        },
+        {
+            "name": "drone-rl2-inner-outer",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/training/rl2/pretrain_or_inner_outer.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--name",
+                    "drone_game",
+                    "--rl2_inner_outer",
+                    ]
+        },
+        {
+            "name": "drone-rl2-test-inner-outer",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/testing/rl2/test_leader_or_inner_outer.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--name",
+                    "drone_game",
+                    "--rl2_inner_outer",
                     ]
         },
     ]

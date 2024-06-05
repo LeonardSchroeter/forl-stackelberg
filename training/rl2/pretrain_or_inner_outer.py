@@ -2,6 +2,8 @@
 Script for training stateful meta-reinforcement learning agents
 """
 
+import os
+
 from functools import partial
 
 import torch as tc
@@ -15,11 +17,19 @@ from rl2_agents.heads.value_heads import LinearValueHead
 from algos.ppo import training_loop
 
 from utils.config_util import load_config_args_overwrite
-from utils.checkpoint_util import maybe_load_checkpoint_rl2, save_checkpoint_rl2
+from utils.checkpoint_util import (
+    maybe_load_checkpoint_rl2,
+    save_checkpoint_rl2,
+    maybe_load_checkpoint_ppo,
+)
 from utils.comm_util import get_comm, sync_state
 from utils.constants import ROOT_RANK, DEVICE
 from utils.optim_util import get_weight_decay_param_groups
 from utils.setup_experiment import create_env, create_net
+
+from wrappers.rl2.trial_wrapper import TrialWrapper
+from wrappers.rl2.leader import SingleAgentLeaderWrapperMetaRL
+
 
 def create_architecture(architecture, input_dim, num_features, context_size):
     if architecture == "gru":
@@ -109,7 +119,9 @@ def main():
     if comm.Get_rank() == ROOT_RANK:
         a = maybe_load_checkpoint_rl2(
             checkpoint_dir=config.training.checkpoint_path,
-            model_name="follower/policy_net",
+            model_name="inner_outer/follower/policy_net"
+            if config.training.rl2_inner_outer
+            else "follower/policy_net",
             model=policy_net,
             optimizer=policy_optimizer,
             scheduler=policy_scheduler,
@@ -118,7 +130,9 @@ def main():
 
         b = maybe_load_checkpoint_rl2(
             checkpoint_dir=config.training.checkpoint_path,
-            model_name="follower/value_net",
+            model_name="inner_outer/follower/value_net"
+            if config.training.rl2_inner_outer
+            else "follower/value_net",
             model=value_net,
             optimizer=value_optimizer,
             scheduler=value_scheduler,
@@ -152,7 +166,9 @@ def main():
     policy_checkpoint_fn = partial(
         save_checkpoint_rl2,
         checkpoint_dir=config.training.checkpoint_path,
-        model_name="follower/policy_net",
+        model_name="inner_outer/follower/policy_net"
+        if config.training.rl2_inner_outer
+        else "follower/policy_net",
         model=policy_net,
         optimizer=policy_optimizer,
         scheduler=policy_scheduler,
@@ -161,11 +177,29 @@ def main():
     value_checkpoint_fn = partial(
         save_checkpoint_rl2,
         checkpoint_dir=config.training.checkpoint_path,
-        model_name="follower/value_net",
+        model_name="inner_outer/follower/value_net"
+        if config.training.rl2_inner_outer
+        else "follower/value_net",
         model=value_net,
         optimizer=value_optimizer,
         scheduler=value_scheduler,
     )
+
+    if config.training.rl2_inner_outer:
+        leader_env = TrialWrapper(env._env, num_episodes=3)
+        leader_env = SingleAgentLeaderWrapperMetaRL(
+            leader_env, follower_policy_net=policy_net
+        )
+
+        training_config = {"n_steps": 128}
+        leader_model, leader_callback_list = maybe_load_checkpoint_ppo(
+            os.path.join(config.training.checkpoint_path, "inner_outer", "leader"),
+            leader_env,
+            training_config=training_config,
+        )
+        env.set_leader_model(leader_model)
+    else:
+        leader_model = None
 
     training_loop(
         env=env,
@@ -190,6 +224,9 @@ def main():
         value_checkpoint_fn=value_checkpoint_fn,
         comm=comm,
         log_wandb=config.training.log_wandb,
+        inner_outer=config.training.rl2_inner_outer,
+        leader_callback_list=leader_callback_list,
+        leader_model=leader_model,
     )
 
 

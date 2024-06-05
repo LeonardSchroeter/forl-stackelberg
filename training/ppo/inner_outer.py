@@ -57,14 +57,17 @@ def train(config, follower_training_config):
         leader_callback_list,
     ) = maybe_load_model(config, follower_training_config, run.id)
 
+    leader_env.set_follower_model(follower_model)
+    follower_env.set_leader_model(leader_model)
+
     for _ in range(100):
-        follower_env.update_leader_model(leader_model)
+        
         follower_model.learn(
             total_timesteps=30_000,
             reset_num_timesteps=False,
             callback=follower_callback_list,
         )
-        leader_env.update_follower_model(follower_model)
+        
         leader_model.learn(
             total_timesteps=10_000,
             reset_num_timesteps=False,
