@@ -13,9 +13,6 @@ class MatGameFollowerEnv(MetaEpisodicEnv):
     def __init__(self, env: IteratedMatrixGame):
 
         self._env = env
-        
-        self.new_env()
-
         self._state = 0
 
     @property

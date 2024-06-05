@@ -22,7 +22,6 @@ class BanditEnv(MetaEpisodicEnv):
         self._num_actions = num_actions
         self._state = None
         self._payout_probabilities = None
-        self.new_env()
 
     @property
     def name(self):

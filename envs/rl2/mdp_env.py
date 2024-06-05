@@ -24,7 +24,6 @@ class MDPEnv(MetaEpisodicEnv):
         # per-environment-sample quantities.
         self._reward_means = None
         self._state_transition_probabilities = None
-        self.new_env()
 
         # mdp state.
         self._ep_steps_so_far = 0
