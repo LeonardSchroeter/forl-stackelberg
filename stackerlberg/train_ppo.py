@@ -52,10 +52,15 @@ def build_follower_env():
 
 
 def pretrain(env):
-    run_follower = wandb.init(project="stackerlberg-follower", sync_tensorboard=True)
-    model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=f"runs/{run_follower.id}")
+    wandb.init(project="stackelberg-follower", sync_tensorboard=True)
+    model = PPO(
+        "MlpPolicy",
+        env,
+        verbose=1,
+        tensorboard_log="runs/stackelberg-follower-ppo",
+    )
     model.learn(
-        total_timesteps=50_000,
+        total_timesteps=200_000,
         callback=WandbCallback(gradient_save_freq=100, verbose=2),
     )
     model.save("checkpoints/follower_ppo")
@@ -64,7 +69,7 @@ def pretrain(env):
 
 
 def test_pretrain(env, model):
-    for response in [[1, 1, 1, 1, 1], [0, 0, 0, 0, 0], [0, 0, 0, 1, 1]]:
+    for response in [[1, 1, 1, 1, 1], [0, 0, 0, 0, 0], [1, 0, 0, 1, 1]]:
         for s in range(5):
             obs = [s, *response]
             action = model.predict(obs, deterministic=True)[0]
@@ -105,12 +110,15 @@ def build_leader_env(follower_model):
 
 
 def train(env_leader):
-    run_leader = wandb.init(project="stackerlberg-leader", sync_tensorboard=True)
+    wandb.init(project="stackelberg-leader", sync_tensorboard=True)
     leader_model = PPO(
-        "MlpPolicy", env_leader, verbose=1, tensorboard_log=f"runs/{run_leader.id}"
+        "MlpPolicy",
+        env_leader,
+        verbose=1,
+        tensorboard_log="runs/stackelberg-leader-ppo",
     )
     leader_model.learn(
-        total_timesteps=50_000,
+        total_timesteps=200_000,
         callback=WandbCallback(gradient_save_freq=100, verbose=2),
     )
     leader_model.save("checkpoints/leader_ppo")
