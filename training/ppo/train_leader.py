@@ -11,7 +11,7 @@ from utils.drone_leader_observation import decimal_to_binary
 from training.ppo.pretrain import build_follower_env
 
 
-def build_leader_env(config, follower_env=None, follower_model=None):
+def build_leader_env_ppo(config, follower_env=None, follower_model=None):
     if follower_env is None:
         follower_env = build_follower_env(config)
 
@@ -56,7 +56,7 @@ def build_leader_env(config, follower_env=None, follower_model=None):
 
 
 def train(config):
-    leader_env = build_leader_env(config)
+    leader_env = build_leader_env_ppo(config)
 
     if config.training.log_wandb:
         run = wandb.init(project="stackelberg-ppo-leader", sync_tensorboard=True)

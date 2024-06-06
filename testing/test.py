@@ -5,7 +5,8 @@ from utils.drone_leader_observation import decimal_to_binary
 from utils.checkpoint_util import maybe_load_checkpoint_ppo
 from utils.config_util import load_config_args_overwrite
 
-from training.ppo.train_leader import build_leader_env
+from training.ppo.train_leader import build_leader_env_ppo
+from training.rl2.train_leader import build_leader_env_rl2
 
 import argparse
 
@@ -14,7 +15,11 @@ parser.add_argument("--algo", choices=["ppo", "rl2"], default="rl2")
 
 
 def test(config, checkpoint_path, run_leader_env=True):
-    env = build_leader_env(config)
+    
+    if config.training.algo_name == "ppo":
+        env = build_leader_env_ppo(config)
+    elif config.training.algo_name == "rl2":
+        env = build_leader_env_rl2(config)
 
     model, _ = maybe_load_checkpoint_ppo(checkpoint_path, env)
 

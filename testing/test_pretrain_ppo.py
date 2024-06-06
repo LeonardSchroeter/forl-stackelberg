@@ -13,6 +13,7 @@ parser.add_argument("--algo", choices=["ppo", "rl2"], default="rl2")
 
 
 def test_pretrain(config, checkpoint_path):
+    
     env = build_follower_env(config)
 
     model, _ = maybe_load_checkpoint_ppo(checkpoint_path, env)
@@ -25,7 +26,7 @@ def test_pretrain(config, checkpoint_path):
                 print(f"state: {s}, context: {response}, action: {action}")
     elif config.env.name == "drone_game":
         env.plant.headless = False
-        leader_response = np.full((2**4,), 2, dtype=int)
+        leader_response = np.full((2**10,), 5, dtype=int)
         # leader_response = np.array(
         #     [0, 3, 0, 3, 3, 0, 3, 0, 0, 0, 3, 3, 0, 3, 0, 3], dtype=int
         #     # [3, 1, 3, 3, 3, 1, 3, 1, 1, 3, 1, 1, 3, 1, 3, 1], dtype=int

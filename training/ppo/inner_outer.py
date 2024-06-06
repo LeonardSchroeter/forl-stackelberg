@@ -8,7 +8,7 @@ from utils.checkpoint_util import maybe_load_checkpoint_ppo
 from utils.config_util import load_config_args_overwrite
 
 from training.ppo.pretrain import build_follower_env
-from training.ppo.train_leader import build_leader_env
+from training.ppo.train_leader import build_leader_env_ppo
 
 
 def maybe_load_model(config, follower_training_config, run_id=0):
@@ -22,7 +22,7 @@ def maybe_load_model(config, follower_training_config, run_id=0):
         run_id,
     )
 
-    leader_env = build_leader_env(
+    leader_env = build_leader_env_ppo(
         config=config, follower_env=follower_env, follower_model=follower_model
     )
 
