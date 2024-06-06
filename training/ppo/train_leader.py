@@ -17,48 +17,32 @@ def build_leader_env_ppo(config, follower_env=None, follower_model=None):
 
     if follower_model is None:
         if config.no_initseg:
-            follower_model, _ = maybe_load_checkpoint_ppo(
-                os.path.join(config.training.checkpoint_path, "no_initseg", "follower"), follower_env
-            )
+            folder = "no_initseg"
         elif config.inner_outer:
-            follower_model, _ = maybe_load_checkpoint_ppo(
-                os.path.join(config.training.checkpoint_path, "inner_outer", "follower"), follower_env
-            )
+            folder = "inner_outer"
         else:
-            follower_model, _ = maybe_load_checkpoint_ppo(
-                os.path.join(config.training.checkpoint_path, "follower"), follower_env
-            )
+            folder = ""
+        follower_model, _ = maybe_load_checkpoint_ppo(
+            os.path.join(config.training.checkpoint_path, folder, "follower"),
+            follower_env,
+        )
     if config.env.name == "matrix_game":
-        if config.no_initseg:
-            leader_env = LeaderWrapperNoInitialSegment(
-                follower_env.env,
-                queries=[0, 1, 2, 3, 4],
-                follower_model=follower_model,
-            )
-        else:
-            leader_env = SingleAgentQueryLeaderWrapper(
-                follower_env.env,
-                queries=[0, 1, 2, 3, 4],
-                follower_model=follower_model,
-            )
+        queries = [0, 1, 2, 3, 4]
     elif config.env.name == "drone_game":
         num_queries = 2 ** follower_env.env.observation_space("leader").n
         queries = [
             decimal_to_binary(o, width=follower_env.env.observation_space("leader").n)
             for o in range(num_queries)
         ]
-        if config.no_initseg:
-            leader_env = LeaderWrapperNoInitialSegment(
-                follower_env.env,
-                queries=queries,
-                follower_model=follower_model,
-            )
-        else:
-            leader_env = SingleAgentQueryLeaderWrapper(
-                follower_env.env,
-                queries=queries,
-                follower_model=follower_model,
-            )
+    if config.no_initseg:
+        wrapper = LeaderWrapperNoInitialSegment
+    else:
+        wrapper = SingleAgentQueryLeaderWrapper
+    leader_env = wrapper(
+        follower_env.env,
+        queries=queries,
+        follower_model=follower_model,
+    )
 
     return leader_env
 

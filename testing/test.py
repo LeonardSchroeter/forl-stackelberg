@@ -15,7 +15,6 @@ parser.add_argument("--algo", choices=["ppo", "rl2"], default="rl2")
 
 
 def test(config, checkpoint_path, run_leader_env=True):
-    
     if config.training.algo_name == "ppo":
         env = build_leader_env_ppo(config)
     elif config.training.algo_name == "rl2":
@@ -59,24 +58,13 @@ def test(config, checkpoint_path, run_leader_env=True):
 if __name__ == "__main__":
     config = load_config_args_overwrite(parser=parser)
     if config.inner_outer:
-        test(
-            config,
-            checkpoint_path=os.path.join(
-                config.training.checkpoint_path, "inner_outer", "leader"
-            ),
-            run_leader_env=config.leader_test_env,
-        )
+        folder = "inner_outer"
     elif config.no_initseg:
-        test(
-            config,
-            checkpoint_path=os.path.join(
-                config.training.checkpoint_path, "no_initseg", "leader"
-            ),
-            run_leader_env=config.leader_test_env,
-        )
+        folder = "no_initseg"
     else:
-        test(
-            config,
-            checkpoint_path=os.path.join(config.training.checkpoint_path, "leader"),
-            run_leader_env=config.leader_test_env,
-        )
+        folder = ""
+    test(
+        config,
+        checkpoint_path=os.path.join(config.training.checkpoint_path, folder, "leader"),
+        run_leader_env=config.leader_test_env,
+    )

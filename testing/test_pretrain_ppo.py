@@ -13,7 +13,6 @@ parser.add_argument("--algo", choices=["ppo", "rl2"], default="rl2")
 
 
 def test_pretrain(config, checkpoint_path):
-    
     env = build_follower_env(config)
 
     model, _ = maybe_load_checkpoint_ppo(checkpoint_path, env)
@@ -48,14 +47,12 @@ def test_pretrain(config, checkpoint_path):
 if __name__ == "__main__":
     config = load_config_args_overwrite(parser=parser)
     if config.inner_outer:
-        test_pretrain(
-            config,
-            checkpoint_path=os.path.join(
-                config.training.checkpoint_path, "inner_outer", "follower"
-            ),
-        )
+        folder = "inner_outer"
     else:
-        test_pretrain(
-            config,
-            checkpoint_path=os.path.join(config.training.checkpoint_path, "follower"),
-        )
+        folder = ""
+    test_pretrain(
+        config,
+        checkpoint_path=os.path.join(
+            config.training.checkpoint_path, folder, "follower"
+        ),
+    )
