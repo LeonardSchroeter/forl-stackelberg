@@ -15,13 +15,7 @@ training:
   pretrain_ent_coef: 0.0
   pretrain_batch_size: 128
   pretrain_n_steps: 512
-  no_initseg: False
   log_wandb: True
-
-testing:
-  no_initseg_test: False
-  inner_outer_test: False
-  leader_test_env: True
 
 matrix_game:
   memory: 2

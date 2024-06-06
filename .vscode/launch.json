@@ -233,15 +233,34 @@
                     ]
         },
         {
-            "name": "drone-ppo-test-inner-outer",
+            "name": "drone-ppo-test-inner-outer-follower",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/testing/ppo/inner_outer.py",
+            "program": "${workspaceFolder}/testing/test_pretrain_ppo.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
                     "--name",
                     "drone_game",
+                    "--algo",
+                    "ppo",
+                    "--inner_outer",
+                    ]
+        },
+        {
+            "name": "drone-ppo-test-inner-outer",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/testing/test.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                    "--name",
+                    "drone_game",
+                    "--inner_outer",
+                    "--leader_test_env",
+                    "--algo",
+                    "ppo",
                     ]
         },
         {

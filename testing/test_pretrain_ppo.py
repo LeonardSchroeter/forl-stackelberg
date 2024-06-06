@@ -26,7 +26,7 @@ def test_pretrain(config, checkpoint_path):
                 print(f"state: {s}, context: {response}, action: {action}")
     elif config.env.name == "drone_game":
         env.plant.headless = False
-        leader_response = np.full((2**10,), 5, dtype=int)
+        leader_response = np.full((2**10,), 8, dtype=int)
         # leader_response = np.array(
         #     [0, 3, 0, 3, 3, 0, 3, 0, 0, 0, 3, 3, 0, 3, 0, 3], dtype=int
         #     # [3, 1, 3, 3, 3, 1, 3, 1, 1, 3, 1, 1, 3, 1, 3, 1], dtype=int
@@ -47,7 +47,7 @@ def test_pretrain(config, checkpoint_path):
 
 if __name__ == "__main__":
     config = load_config_args_overwrite(parser=parser)
-    if config.testing.inner_outer_test:
+    if config.inner_outer:
         test_pretrain(
             config,
             checkpoint_path=os.path.join(

@@ -16,12 +16,20 @@ def build_leader_env_ppo(config, follower_env=None, follower_model=None):
         follower_env = build_follower_env(config)
 
     if follower_model is None:
-        follower_model, _ = maybe_load_checkpoint_ppo(
-            os.path.join(config.training.checkpoint_path, "follower"), follower_env
-        )
-
+        if config.no_initseg:
+            follower_model, _ = maybe_load_checkpoint_ppo(
+                os.path.join(config.training.checkpoint_path, "no_initseg", "follower"), follower_env
+            )
+        elif config.inner_outer:
+            follower_model, _ = maybe_load_checkpoint_ppo(
+                os.path.join(config.training.checkpoint_path, "inner_outer", "follower"), follower_env
+            )
+        else:
+            follower_model, _ = maybe_load_checkpoint_ppo(
+                os.path.join(config.training.checkpoint_path, "follower"), follower_env
+            )
     if config.env.name == "matrix_game":
-        if config.training.no_initseg:
+        if config.no_initseg:
             leader_env = LeaderWrapperNoInitialSegment(
                 follower_env.env,
                 queries=[0, 1, 2, 3, 4],
@@ -39,7 +47,7 @@ def build_leader_env_ppo(config, follower_env=None, follower_model=None):
             decimal_to_binary(o, width=follower_env.env.observation_space("leader").n)
             for o in range(num_queries)
         ]
-        if config.training.no_initseg:
+        if config.no_initseg:
             leader_env = LeaderWrapperNoInitialSegment(
                 follower_env.env,
                 queries=queries,
@@ -63,14 +71,14 @@ def train(config):
 
     leader_model, callback_list = maybe_load_checkpoint_ppo(
         os.path.join(config.training.checkpoint_path, "leader_noinitseg")
-        if config.training.no_initseg
+        if config.no_initseg
         else os.path.join(config.training.checkpoint_path, "leader"),
         leader_env,
         config.training.log_wandb,
         run_id=run.id,
     )
 
-    if config.training.no_initseg:
+    if config.no_initseg:
         leader_env.set_leader_model(leader_model)
 
     leader_model.learn(

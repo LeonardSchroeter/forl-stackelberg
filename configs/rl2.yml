@@ -22,13 +22,6 @@ training:
   adam_eps: 1.0e-5
   adam_wd: 0.01
   log_wandb: True
-  rl2_inner_outer: False
-  no_initseg: False #will this be used?
-
-testing:
-  no_initseg_test: False #will this be used?
-  inner_outer_test: False
-  leader_test_env: False
 
 bandit:
   num_actions: 5

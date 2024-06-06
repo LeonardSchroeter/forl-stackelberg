@@ -23,12 +23,12 @@ def test(config, checkpoint_path, run_leader_env=True):
 
     model, _ = maybe_load_checkpoint_ppo(checkpoint_path, env)
 
-    if config.training.no_initseg:
+    if config.no_initseg:
         env.set_leader_model(model)
 
     if config.env.name == "drone_game":
         env.plant.headless = False
-        env.plant.sleep_time = 0.5
+        # env.plant.sleep_time = 0.5
 
     if run_leader_env:
         # play a single episode to check learned leader and follower policies
@@ -58,25 +58,25 @@ def test(config, checkpoint_path, run_leader_env=True):
 
 if __name__ == "__main__":
     config = load_config_args_overwrite(parser=parser)
-    if config.testing.inner_outer_test:
+    if config.inner_outer:
         test(
             config,
             checkpoint_path=os.path.join(
                 config.training.checkpoint_path, "inner_outer", "leader"
             ),
-            run_leader_env=config.testing.leader_test_env,
+            run_leader_env=config.leader_test_env,
         )
-    elif config.testing.no_initseg_test:
+    elif config.no_initseg:
         test(
             config,
             checkpoint_path=os.path.join(
                 config.training.checkpoint_path, "no_initseg", "leader"
             ),
-            run_leader_env=config.testing.leader_test_env,
+            run_leader_env=config.leader_test_env,
         )
     else:
         test(
             config,
             checkpoint_path=os.path.join(config.training.checkpoint_path, "leader"),
-            run_leader_env=config.testing.leader_test_env,
+            run_leader_env=config.leader_test_env,
         )
