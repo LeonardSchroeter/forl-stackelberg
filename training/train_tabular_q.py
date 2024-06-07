@@ -2,11 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from envs.matrix_game import IteratedMatrixGame
-from wrappers.follower import FollowerWrapper
+from wrappers.follower import ContextualPolicyWrapper
 from algos.tabular_q import TabularQ
 
 
-class Train:
+class TrainTabQ:
     def __init__(self, env, config=None):
         self.env = env
 
@@ -151,11 +151,11 @@ if __name__ == "__main__":
 
     np.random.seed(int(time.time()))
 
-    env = FollowerWrapper(
+    env = ContextualPolicyWrapper(
         IteratedMatrixGame(matrix="prisoners_dilemma", episode_length=10, memory=2),
         num_queries=5,
     )
-    q = Train(env, config=good_config)
+    q = TrainTabQ(env, config=good_config)
     q.train_follower()
     print("Pretraining done")
     returns = q.train_leader()
