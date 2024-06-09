@@ -12,8 +12,6 @@ def load_config_args_overwrite(file=None, parser=None):
     parser.add_argument(
         "--name",
         choices=[
-            "bandit",
-            "tabular_mdp",
             "matrix_game",
             "drone_game",
         ],

@@ -27,7 +27,7 @@ def test(config, checkpoint_path, run_leader_env=True):
 
     if config.env.name == "drone_game":
         env.plant.headless = False
-        # env.plant.sleep_time = 0.5
+        env.plant.sleep_time = 0.2
 
     if run_leader_env:
         # play a single episode to check learned leader and follower policies
@@ -61,6 +61,8 @@ if __name__ == "__main__":
         folder = "inner_outer"
     elif config.no_initseg:
         folder = "no_initseg"
+    elif config.env.name == "drone_game" and config.drone_game.leader_cont:
+        folder = "leader_cont"
     else:
         folder = ""
     test(

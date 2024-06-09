@@ -5,15 +5,35 @@ Implements the Tabular MDP environment(s) from Duan et al., 2016
 
 from typing import Tuple
 
+import torch
+from torch import nn
+from torch.distributions import Categorical
+import numpy as np
+
 from envs.rl2.abstract import MetaEpisodicEnv
 from envs.drone_game import DroneGame
 from utils.drone_leader_observation import binary_to_decimal, decimal_to_binary
+from utils.constants import DEVICE
 
 
 class DroneGameFollowerEnv(MetaEpisodicEnv):
     def __init__(self, env: DroneGame):
         self._env = env
         self._state = 0
+        if self.leader_cont:
+            # config = load_config_args_overwrite("configs/rl2.yml")
+            # env = build_leader_env_rl2(config)
+            # self._leader_model, _ = maybe_load_checkpoint_ppo(
+            #     os.path.join(config.training.checkpoint_path, "leader_cont", "leader"),
+            #     env,
+            # )
+            self._leader_model = nn.Sequential(
+                nn.Linear(2 * self._env.drone_life_span, 256),
+                nn.ReLU(),
+                nn.Linear(256, 1),
+                # nn.Linear(256, self._env.env.height - 4),
+                # nn.Softmax()
+            )
 
     @property
     def name(self):
@@ -32,21 +52,33 @@ class DroneGameFollowerEnv(MetaEpisodicEnv):
         return self._env.observation_space("follower").nvec.tolist()
 
     @property
+    def leader_cont(self):
+        return self._env.leader_cont
+
+    @property
     def dim_states(self):
         dim_states = [
             2,
             self._env.env.agent_view_size * self._env.env.agent_view_size,
-            self._env.env.num_divisions,
+            2 * self._env.drone_life_span
+            if self.leader_cont
+            else self._env.env.num_divisions,
             1,
         ]
-        assert sum(dim_states) == len(self._env.observation_space("follower").nvec)
+        # assert sum(dim_states) == len(self._env.observation_space("follower").nvec)
         return dim_states
 
     def _new_leader_policy(self):
-        self._leader_response = [
-            self._env.action_space("leader").sample()
-            for _ in range(2 ** self._env.observation_space("leader").n)
-        ]
+        if self._env.leader_cont:
+            for _, param in self._leader_model.named_parameters():
+                param.data = torch.FloatTensor(8e-3 * np.random.random(param.size())).to(
+                    DEVICE
+                )
+        else:
+            self._leader_response = [
+                self._env.action_space("leader").sample()
+                for _ in range(2 ** self._env.observation_space("leader").n)
+            ]
         # self._leader_response = [
         #     3 \
         #     for _ in range(2 ** self._env.observation_space("leader").n)
@@ -85,9 +117,20 @@ class DroneGameFollowerEnv(MetaEpisodicEnv):
             new_state, reward, done, info.
         """
 
-        ol = binary_to_decimal(self._env.get_leader_observation())
+        ol = self._env.get_leader_observation()
 
-        a_ts = {"leader": self._leader_response[ol], "follower": action}
+        if self._env.leader_cont:
+            # al_probs = self._leader_model(torch.FloatTensor(ol).to(DEVICE))
+            # al = Categorical(al_probs).sample((1,)).cpu().item()
+            al = (
+                self._leader_model(torch.FloatTensor(ol).to(DEVICE)).item()
+                + 0.2 * np.random.normal()
+            )
+            al = np.clip(al, 0, 1, dtype=float)
+        else:
+            ol = binary_to_decimal(ol)
+            al = self._leader_response[ol]
+        a_ts = {"leader": al, "follower": action}
 
         s_tp1s, r_ts, done_ts, _, _ = self._env.step(a_ts)
         s_tp1 = s_tp1s["follower"]
@@ -107,14 +150,14 @@ class DroneGameFollowerInfoSample(DroneGameFollowerEnv):
         super().__init__(env)
 
     def set_leader_model(self, leader_model):
-        self.leader_model = leader_model
+        self._leader_model = leader_model
 
     def _preprocess_observation(self, obs):
         return decimal_to_binary(obs, width=self._env.observation_space("leader").n)
 
     def _new_leader_policy(self):
         self._leader_response = [
-            self.leader_model.predict(
+            self._leader_model.predict(
                 self._preprocess_observation(o), deterministic=False
             )[0]
             for o in range(2 ** self._env.observation_space("leader").n)
