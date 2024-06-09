@@ -135,7 +135,7 @@ class DroneGame(ParallelEnv):
         leader_obs_space = (
             spaces.MultiDiscrete(
                 [self.env.width, self.env.height] * self.drone_life_span
-            )
+            ) #TODO: -1?
             if leader_cont
             else spaces.MultiBinary(self.env.num_divisions),
         )

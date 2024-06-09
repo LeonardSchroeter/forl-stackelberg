@@ -29,7 +29,7 @@ class DroneGameFollowerEnv(MetaEpisodicEnv):
             # )
             self._leader_model = nn.Sequential(
                 nn.Linear(2 * self._env.drone_life_span, 256),
-                nn.ReLU(),
+                nn.Tanh(),
                 nn.Linear(256, 1),
                 # nn.Linear(256, self._env.env.height - 4),
                 # nn.Softmax()
@@ -71,7 +71,7 @@ class DroneGameFollowerEnv(MetaEpisodicEnv):
     def _new_leader_policy(self):
         if self._env.leader_cont:
             for _, param in self._leader_model.named_parameters():
-                param.data = torch.FloatTensor(8e-3 * np.random.random(param.size())).to(
+                param.data = torch.FloatTensor(np.random.uniform(-1, 1, param.size())).to(
                     DEVICE
                 )
         else:
@@ -123,8 +123,8 @@ class DroneGameFollowerEnv(MetaEpisodicEnv):
             # al_probs = self._leader_model(torch.FloatTensor(ol).to(DEVICE))
             # al = Categorical(al_probs).sample((1,)).cpu().item()
             al = (
-                self._leader_model(torch.FloatTensor(ol).to(DEVICE)).item()
-                + 0.2 * np.random.normal()
+                0.1 * self._leader_model(torch.FloatTensor(ol).to(DEVICE)).item()
+                + 0.5 + 0.2 * np.random.normal()
             )
             al = np.clip(al, 0, 1, dtype=float)
         else:
