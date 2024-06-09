@@ -7,7 +7,6 @@ from typing import Tuple
 
 import torch
 from torch import nn
-from torch.distributions import Categorical
 import numpy as np
 
 from envs.rl2.abstract import MetaEpisodicEnv
@@ -17,7 +16,7 @@ from utils.constants import DEVICE
 
 
 class DroneGameFollowerEnv(MetaEpisodicEnv):
-    def __init__(self, env: DroneGame):
+    def __init__(self, env: DroneGame, rand_noise: bool = True):
         self._env = env
         self._state = 0
         if self.leader_cont:
@@ -33,8 +32,8 @@ class DroneGameFollowerEnv(MetaEpisodicEnv):
                 nn.Linear(256, 1),
                 # nn.Linear(256, self._env.env.height - 4),
                 # nn.Softmax()
-            )
-
+            ).to(DEVICE)
+            self.rand_noise = rand_noise
     @property
     def name(self):
         return "drone_game"
@@ -71,9 +70,9 @@ class DroneGameFollowerEnv(MetaEpisodicEnv):
     def _new_leader_policy(self):
         if self._env.leader_cont:
             for _, param in self._leader_model.named_parameters():
-                param.data = torch.FloatTensor(np.random.uniform(-1, 1, param.size())).to(
-                    DEVICE
-                )
+                param.data = torch.FloatTensor(
+                    np.random.uniform(-1, 1, param.size())
+                ).to(DEVICE)
         else:
             self._leader_response = [
                 self._env.action_space("leader").sample()
@@ -124,8 +123,11 @@ class DroneGameFollowerEnv(MetaEpisodicEnv):
             # al = Categorical(al_probs).sample((1,)).cpu().item()
             al = (
                 0.1 * self._leader_model(torch.FloatTensor(ol).to(DEVICE)).item()
-                + 0.5 + 0.2 * np.random.normal()
+                # + 0.5 + 0.2 * np.random.normal()
+                + 0.5
             )
+            if self.rand_noise:
+                al += 0.2 * np.random.normal()
             al = np.clip(al, 0, 1, dtype=float)
         else:
             ol = binary_to_decimal(ol)

@@ -1,3 +1,5 @@
+import os
+
 from envs.rl2.mat_game_follower_env import (
     MatGameFollowerEnv,
     IteratedMatrixGame,
@@ -153,11 +155,16 @@ def get_policy_net_for_inference(env, config):
     policy_net = policy_net.to(DEVICE)
 
     # load checkpoint, if applicable.
+    if config.inner_outer:
+        folder = "inner_outer"
+    elif config.drone_game.leader_cont and config.env.name == "drone_game":
+        folder = "leader_cont"
+    else:
+        folder = ""
+    model_name = os.path.join(folder, "inner_outer/policy")
     maybe_load_checkpoint_rl2(
         checkpoint_dir=config.training.checkpoint_path,
-        model_name="inner_outer/follower/policy_net"
-        if config.training.rl2_inner_outer
-        else "follower/policy_net",
+        model_name=model_name,
         model=policy_net,
         optimizer=None,
         scheduler=None,

@@ -5,23 +5,28 @@ from utils.setup_experiment import get_policy_net_for_inference, create_env
 from utils.constants import DEVICE
 
 
-# Only works for matrix game at the moment
 def evaluate(config, policy_net=None, leader_policy=None, verbose=False):
     # create env.
     env = create_env(config=config)
     if config.env.name == "drone_game":
-        assert (
-            len(leader_policy) == 2**env._env.env.num_divisions
-        ), "Leader policy size is not correct."
+        env.rand_noise = False
         env._env.headless = False
+        if (not config.drone_game.leader_cont):
+            assert (
+                len(leader_policy) == 2**env._env.env.num_divisions
+            ), "Leader policy size is not correct."
+        
 
     if policy_net is None:
         policy_net = get_policy_net_for_inference(env, config)
 
-    def evaluate_policy(leader_policy):
+    def evaluate_policy(leader_policy, leader_cont):
         rewards = []
 
-        env._leader_response = leader_policy
+        if leader_cont:
+            env._leader_model = leader_policy
+        else:
+            env._leader_response = leader_policy
 
         action = np.array([0])
         reward = np.array([0.0])
@@ -59,17 +64,20 @@ def evaluate(config, policy_net=None, leader_policy=None, verbose=False):
                 current_episode += 1
                 if current_episode >= config.env.num_meta_episodes:
                     break
-        
+
         if config.env.name == "drone_game":
             env._env.close(video_name="size6_rnn.avi")
 
         return np.sum(rewards)
 
     if leader_policy is not None:
-        return evaluate_policy(leader_policy)
+        return evaluate_policy(leader_policy, leader_cont=config.drone_game.leader_cont)
     else:
         rewards = []
         for i in range(32):
-            reward = evaluate_policy([int(x) for x in np.binary_repr(i, width=5)][::-1])
+            reward = evaluate_policy(
+                [int(x) for x in np.binary_repr(i, width=5)][::-1],
+                leader_cont=config.drone_game.leader_cont,
+            )
             rewards.append(reward)
         return np.mean(rewards)

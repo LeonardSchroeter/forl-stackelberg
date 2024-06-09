@@ -140,7 +140,7 @@
             "name": "drone-rl2-test-pretrain",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/testing/rl2/test_pretrain.py",
+            "program": "${workspaceFolder}/testing/test_pretrain_rl2.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
