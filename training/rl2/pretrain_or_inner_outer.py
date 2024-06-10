@@ -166,8 +166,6 @@ def main():
         root=ROOT_RANK,
     )
 
-
-
     # make callback functions for checkpointing.
     policy_checkpoint_fn = partial(
         save_checkpoint_rl2,
@@ -202,8 +200,10 @@ def main():
         )
         env.set_leader_model(leader_model)
     else:
+        if (config.env.name == "drone_game") and (config.drone_game.leader_cont):
+            env.set_follower_policy_net(follower_policy_net=policy_net)
         leader_model = None
-        leader_callback_list = None,
+        leader_callback_list = (None,)
 
     training_loop(
         env=env,

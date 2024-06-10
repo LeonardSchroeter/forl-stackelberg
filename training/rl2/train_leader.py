@@ -26,8 +26,12 @@ def train(config):
     
     run = wandb.init(project="stackelberg-rl2-leader", sync_tensorboard=True)
 
+    if (config.env.name == "drone_game") and (config.drone_game.leader_cont):
+        folder = "leader_cont"
+    else:
+        folder = ""
     model, callback_list = maybe_load_checkpoint_ppo(
-        os.path.join(config.training.checkpoint_path, "leader"),
+        os.path.join(config.training.checkpoint_path, folder, "leader"),
         env,
         config.training.log_wandb,
         run_id=run.id,

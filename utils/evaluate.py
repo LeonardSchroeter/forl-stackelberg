@@ -9,7 +9,7 @@ def evaluate(config, policy_net=None, leader_policy=None, verbose=False):
     # create env.
     env = create_env(config=config)
     if config.env.name == "drone_game":
-        env.rand_noise = False
+        # env.rand_noise = False
         env._env.headless = False
         if (not config.drone_game.leader_cont):
             assert (

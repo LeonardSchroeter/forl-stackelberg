@@ -14,29 +14,36 @@ from envs.drone_game import DroneGame
 from utils.drone_leader_observation import binary_to_decimal, decimal_to_binary
 from utils.constants import DEVICE
 
+from stable_baselines3 import PPO
+from wrappers.rl2.trial_wrapper import TrialWrapper
+from wrappers.rl2.leader import SingleAgentLeaderWrapperMetaRL
+
 
 class DroneGameFollowerEnv(MetaEpisodicEnv):
     def __init__(self, env: DroneGame):
         self._env = env
         self._state = 0
-        if self.leader_cont:
-            # config = load_config_args_overwrite("configs/rl2.yml")
-            # env = build_leader_env_rl2(config)
-            # self._leader_model, _ = maybe_load_checkpoint_ppo(
-            #     os.path.join(config.training.checkpoint_path, "leader_cont", "leader"),
-            #     env,
-            # )
-            self._leader_model = nn.Sequential(
-                nn.Linear(2 * self._env.drone_life_span, 256),
-                nn.Tanh(),
-                nn.Linear(256, 2),
-                # nn.Linear(256, self._env.env.height - 4),
-                nn.Softmax()
-            ).to(DEVICE)
-            self.rand_noise = False
+        # if self.leader_cont:
+        #     # config = load_config_args_overwrite("configs/rl2.yml")
+        #     # env = build_leader_env_rl2(config)
+        #     # self._leader_model, _ = maybe_load_checkpoint_ppo(
+        #     #     os.path.join(config.training.checkpoint_path, "leader_cont", "leader"),
+        #     #     env,
+        #     # )
+        #     self._leader_model = nn.Sequential(
+        #         nn.Linear(2 * self._env.drone_life_span, 256),
+        #         nn.Tanh(),
+        #         nn.Linear(256, 2),
+        #         # nn.Linear(256, self._env.env.height - 4),
+        #         nn.Softmax()
+        #     ).to(DEVICE)
+        #     self.rand_noise = False
 
     def inject_rand_noise(self):
         self.rand_noise = True
+
+    def set_follower_policy_net(self, follower_policy_net):
+        self._follower_policy_net = follower_policy_net
     
     @property
     def name(self):
@@ -73,10 +80,20 @@ class DroneGameFollowerEnv(MetaEpisodicEnv):
 
     def _new_leader_policy(self):
         if self._env.leader_cont:
-            for _, param in self._leader_model.named_parameters():
-                param.data = torch.FloatTensor(
-                    0.1 * np.random.uniform(-1, 1, param.size())
-                ).to(DEVICE)
+            leader_env = TrialWrapper(self._env, num_episodes=3)
+            leader_env = SingleAgentLeaderWrapperMetaRL(
+                leader_env, follower_policy_net=self._follower_policy_net
+            )
+
+            self._leader_model = PPO(
+            "MlpPolicy",
+                leader_env,
+                verbose=1,
+            )
+            # for _, param in self._leader_model.named_parameters():
+            #     param.data = torch.FloatTensor(
+            #         0.1 * np.random.uniform(-1, 1, param.size())
+            #     ).to(DEVICE)
         else:
             self._leader_response = [
                 self._env.action_space("leader").sample()
@@ -130,10 +147,12 @@ class DroneGameFollowerEnv(MetaEpisodicEnv):
             #     # + 0.5 + 0.2 * np.random.normal()
             #     + 0.5
             # )
-            al = self._leader_model(torch.FloatTensor(ol).to(DEVICE)).cpu().numpy()[0]
-            if self.rand_noise:
-                al += 0.1 * np.random.normal()
-            al = np.clip(al, 0, 1, dtype=float)
+            # al = self._leader_model(torch.FloatTensor(ol).to(DEVICE)).cpu().numpy()[0]
+            al = self._leader_model.predict(ol, deterministic=False)[0]
+            # print(al)
+            # if self.rand_noise:
+            #     al += 0.1 * np.random.normal()
+            # al = np.clip(al, 0, 1, dtype=float)
             # print(al)
         else:
             ol = binary_to_decimal(ol)

@@ -135,7 +135,7 @@ class DroneGame(ParallelEnv):
         leader_obs_space = (
             spaces.MultiDiscrete(
                 [self.env.width, self.env.height] * self.drone_life_span
-            ) #TODO: -1?
+            )  # TODO: -1?
             if leader_cont
             else spaces.MultiBinary(self.env.num_divisions),
         )
@@ -172,8 +172,15 @@ class DroneGame(ParallelEnv):
 
     def reset(self):
         self.env.reset()
+        leader_obs = []
+        for i in range(2 * self.drone_life_span):
+            leader_obs.append(
+                np.random.randint(2, self.env.height - 3)
+                if i % 2
+                else np.random.randint(2, self.env.width - 3)
+            )
         return {
-            "leader": -np.ones(self.drone_life_span)
+            "leader": leader_obs
             if self.leader_cont
             else np.zeros(self.env.num_divisions),
             "follower": np.zeros(len(self.observation_space("follower").nvec)),
@@ -254,7 +261,12 @@ class DroneGame(ParallelEnv):
             for drone in self.drones:
                 drone_coords.append((drone.center.y, drone.center.x))
             while len(drone_coords) < self.drone_life_span:
-                drone_coords.append((-1, -1))
+                drone_coords.append(
+                    (
+                        np.random.randint(2, self.env.height - 3),
+                        np.random.randint(2, self.env.width - 3),
+                    )
+                )
             observation = np.flip(sorted(drone_coords), axis=-1).flatten()
         else:
             observation = np.zeros(self.env.num_divisions)

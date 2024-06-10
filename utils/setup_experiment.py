@@ -160,11 +160,11 @@ def get_policy_net_for_inference(env, config):
     # load checkpoint, if applicable.
     if config.inner_outer:
         folder = "inner_outer"
-    elif config.drone_game.leader_cont and config.env.name == "drone_game":
+    elif (config.drone_game.leader_cont) and (config.env.name == "drone_game"):
         folder = "leader_cont"
     else:
         folder = ""
-    model_name = os.path.join(folder, "inner_outer/policy")
+    model_name = os.path.join(folder, "follower", "policy_net")
     maybe_load_checkpoint_rl2(
         checkpoint_dir=config.training.checkpoint_path,
         model_name=model_name,
