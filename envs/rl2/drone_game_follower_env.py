@@ -16,7 +16,7 @@ from utils.constants import DEVICE
 
 
 class DroneGameFollowerEnv(MetaEpisodicEnv):
-    def __init__(self, env: DroneGame, rand_noise: bool = True):
+    def __init__(self, env: DroneGame):
         self._env = env
         self._state = 0
         if self.leader_cont:
@@ -29,11 +29,15 @@ class DroneGameFollowerEnv(MetaEpisodicEnv):
             self._leader_model = nn.Sequential(
                 nn.Linear(2 * self._env.drone_life_span, 256),
                 nn.Tanh(),
-                nn.Linear(256, 1),
+                nn.Linear(256, 2),
                 # nn.Linear(256, self._env.env.height - 4),
-                # nn.Softmax()
+                nn.Softmax()
             ).to(DEVICE)
-            self.rand_noise = rand_noise
+            self.rand_noise = False
+
+    def inject_rand_noise(self):
+        self.rand_noise = True
+    
     @property
     def name(self):
         return "drone_game"
@@ -71,7 +75,7 @@ class DroneGameFollowerEnv(MetaEpisodicEnv):
         if self._env.leader_cont:
             for _, param in self._leader_model.named_parameters():
                 param.data = torch.FloatTensor(
-                    np.random.uniform(-1, 1, param.size())
+                    0.1 * np.random.uniform(-1, 1, param.size())
                 ).to(DEVICE)
         else:
             self._leader_response = [
@@ -121,14 +125,16 @@ class DroneGameFollowerEnv(MetaEpisodicEnv):
         if self._env.leader_cont:
             # al_probs = self._leader_model(torch.FloatTensor(ol).to(DEVICE))
             # al = Categorical(al_probs).sample((1,)).cpu().item()
-            al = (
-                0.1 * self._leader_model(torch.FloatTensor(ol).to(DEVICE)).item()
-                # + 0.5 + 0.2 * np.random.normal()
-                + 0.5
-            )
+            # al = (
+            #     0.1 * self._leader_model(torch.FloatTensor(ol).to(DEVICE)).item()
+            #     # + 0.5 + 0.2 * np.random.normal()
+            #     + 0.5
+            # )
+            al = self._leader_model(torch.FloatTensor(ol).to(DEVICE)).cpu().numpy()[0]
             if self.rand_noise:
-                al += 0.2 * np.random.normal()
+                al += 0.1 * np.random.normal()
             al = np.clip(al, 0, 1, dtype=float)
+            # print(al)
         else:
             ol = binary_to_decimal(ol)
             al = self._leader_response[ol]

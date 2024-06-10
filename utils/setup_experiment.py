@@ -47,11 +47,14 @@ def create_env(config):
             headless=config.drone_game.headless,
             leader_cont=config.drone_game.leader_cont,
         )
-        return (
+        env = (
             DroneGameFollowerInfoSample(env)
             if config.inner_outer
             else DroneGameFollowerEnv(env)
         )
+        if config.drone_game.leader_cont:
+            env.inject_rand_noise()
+        return env
 
     raise NotImplementedError
 
