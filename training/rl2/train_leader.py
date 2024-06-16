@@ -9,9 +9,9 @@ from wrappers.rl2.leader import SingleAgentLeaderWrapperMetaRL
 
 import wandb
 
-def build_leader_env_rl2(config, run_id):
+def build_leader_env_rl2(config):
 
-    follower_env = create_env(config=config, run_id=run_id)
+    follower_env = create_env(config=config)
 
     policy_net = get_policy_net_for_inference(follower_env, config)
 
@@ -24,7 +24,7 @@ def train(config):
 
     run = wandb.init(project="stackelberg-rl2-leader", sync_tensorboard=True, monitor_gym=True)
 
-    env = build_leader_env_rl2(config, run.id)
+    env = build_leader_env_rl2(config)
 
     if (config.env.name == "drone_game") and (config.drone_game.leader_cont):
         folder = "leader_cont"

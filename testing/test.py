@@ -18,7 +18,7 @@ def test(config, checkpoint_path, leader_test_env=True):
     if config.training.algo_name == "ppo":
         env = build_leader_env_ppo(config)
     elif config.training.algo_name == "rl2":
-        env = build_leader_env_rl2(config, run_id=None)
+        env = build_leader_env_rl2(config)
 
     model, _ = maybe_load_checkpoint_ppo(checkpoint_path, env)
 
