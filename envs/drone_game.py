@@ -167,6 +167,8 @@ class DroneGame(ParallelEnv):
 
         self.sleep_time = 0.0
 
+        self.follower_captured = False
+
     def action_space(self, agent: str) -> spaces.Space:
         return self.action_spaces[agent]
 
@@ -278,7 +280,8 @@ class DroneGame(ParallelEnv):
     def get_leader_reward(self):
         if isinstance(
             self.env.grid.get(self.env.agent_pos[0], self.env.agent_pos[1]), LavaColored
-        ):
+        ) and (not self.follower_captured):
+            self.follower_captured = True
             return 1
 
         return 0
