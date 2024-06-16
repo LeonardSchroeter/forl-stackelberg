@@ -1,4 +1,6 @@
-import os
+import sys, os
+
+sys.path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), "..", ".."))
 
 from utils.config_util import load_config_args_overwrite
 from utils.setup_experiment import create_env, get_policy_net_for_inference
