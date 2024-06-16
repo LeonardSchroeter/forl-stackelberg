@@ -1,10 +1,8 @@
 gymnasium==0.29.1
-matplotlib==3.8.4
-numpy==1.26.4
-six==1.16.0
-stable_baselines3==2.3.2
-tensorboard==2.16.2
-torch==2.3.0
-wandb==0.16.6
+minigrid==2.3.1
+mpi4py==3.1.6
 pettingzoo==1.24.3
-pytest==8.2.0
+stable_baselines3==2.3.2
+tensorboard==2.14.0
+torch==2.3.1
+wandb==0.17.1
