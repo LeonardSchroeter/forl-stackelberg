@@ -1,5 +1,7 @@
 import os
 
+import gymnasium as gym
+
 from envs.rl2.mat_game_follower_env import (
     MatGameFollowerEnv,
     IteratedMatrixGame,
@@ -28,7 +30,7 @@ from utils.constants import DEVICE
 from utils.checkpoint_util import maybe_load_checkpoint_rl2
 
 
-def create_env(config):
+def create_env(config, run_id):
     if config.env.name == "matrix_game":
         return MatGameFollowerEnv(
             env=IteratedMatrixGame(
@@ -38,12 +40,16 @@ def create_env(config):
             )
         )
     if config.env.name == "drone_game":
+        env = DroneGameEnv(
+            width=config.drone_game.width,
+            height=config.drone_game.height,
+            drone_dist=config.drone_game.drone_dist,
+        )
+        if env.render_mode == "rgb":
+            env = gym.wrappers.RecordEpisodeStatistics(env)
+            env = gym.wrappers.RecordVideo(env, f"videos/{run_id}")
         env = DroneGame(
-            env=DroneGameEnv(
-                width=config.drone_game.width,
-                height=config.drone_game.height,
-                drone_dist=config.drone_game.drone_dist,
-            ),
+            env,
             headless=config.drone_game.headless,
             leader_cont=config.drone_game.leader_cont,
         )

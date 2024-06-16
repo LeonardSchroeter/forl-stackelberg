@@ -44,7 +44,7 @@
             "name": "drone-ppo-test-pretrain",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/testing/ppo/test_pretrain.py",
+            "program": "${workspaceFolder}/testing/test_pretrain_ppo.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
@@ -92,12 +92,15 @@
             "name": "drone-ppo-test-train",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/testing/ppo/test_leader.py",
+            "program": "${workspaceFolder}/testing/test.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
+                    "--algo",
+                    "ppo",
                     "--name",
                     "drone_game",
+                    "--leader_test_env"
                     ]
         },
         {

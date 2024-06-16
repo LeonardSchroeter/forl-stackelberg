@@ -32,8 +32,12 @@ def build_follower_env(config, inner_outer=False):
             headless=config.drone_game.headless,
             leader_cont=config.drone_game.leader_cont,
         )
+        if isinstance(env.observation_space("leader"), spaces.MultiBinary):
+            num_queries = 2 ** env.observation_space("leader").n
+        elif isinstance(env.observation_space("leader"), spaces.MultiDiscrete):
+            num_queries = np.prod(env.observation_space("leader").nvec)
         follower_env = FollowerWrapper(
-            env=env, num_queries=2 ** env.observation_space("leader").n
+            env=env, num_queries=num_queries
         )
     if inner_outer:
         follower_env = FollowerWrapperInfoSample(follower_env)
@@ -50,8 +54,13 @@ def pretrain(config, pretrain_config, follower_env=None):
     if config.training.log_wandb:
         run = wandb.init(project="stackelberg-ppo-follower", sync_tensorboard=True)
 
+    if config.drone_game.leader_cont:
+        folder = "leader_cont"
+    else:
+        folder = ""
+
     follower_model, callback_list = maybe_load_checkpoint_ppo(
-        os.path.join(config.training.checkpoint_path, "follower"),
+        os.path.join(config.training.checkpoint_path, folder, "follower"),
         follower_env,
         config.training.log_wandb,
         pretrain_config,

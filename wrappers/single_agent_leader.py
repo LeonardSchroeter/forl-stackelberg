@@ -1,6 +1,7 @@
 import numpy as np
 
 import gymnasium as gym
+from gymnasium import spaces
 
 from wrappers.follower import FollowerWrapper
 
@@ -26,7 +27,7 @@ class SingleAgentLeaderWrapper(gym.Env):
     @property
     def plant(self):
         return self.env.plant
-    
+
     def set_follower_model(self, follower_model):
         self.follower_model = follower_model
 
@@ -80,9 +81,7 @@ class SingleAgentQueryLeaderWrapper(SingleAgentLeaderWrapper):
         follower_epsilon_greedy: bool = False,
         epsilon: float = 0.1,
     ):
-        super().__init__(
-            env, queries, follower_model, follower_epsilon_greedy, epsilon
-        )
+        super().__init__(env, queries, follower_model, follower_epsilon_greedy, epsilon)
 
     def reset(self, seed=None, options=None):
         self.current_step = 0
@@ -94,7 +93,11 @@ class SingleAgentQueryLeaderWrapper(SingleAgentLeaderWrapper):
         self.current_step += 1
 
         if self.current_step <= len(self.queries):
-            self.leader_response.append(action)
+            self.leader_response.append(
+                action[0]
+                if isinstance(self.env.action_space("leader"), spaces.Box)
+                else action
+            )
 
         if self.current_step < len(self.queries):
             return self.queries[self.current_step], 0, False, False, {}
@@ -135,9 +138,7 @@ class LeaderWrapperNoInitialSegment(SingleAgentLeaderWrapper):
         epsilon: float = 0.1,
         random_follower_policy_prob: float = 0.0,
     ):
-        super().__init__(
-            env, queries, follower_model, follower_epsilon_greedy, epsilon
-        )
+        super().__init__(env, queries, follower_model, follower_epsilon_greedy, epsilon)
         self.leader_model = leader_model
         self.random_follower_policy_prob = random_follower_policy_prob
 

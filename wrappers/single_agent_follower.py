@@ -8,6 +8,7 @@ from utils.drone_leader_observation import *
 
 import os
 
+
 class SingleAgentFollowerWrapper(gym.Env):
     def __init__(self, env: FollowerWrapper):
         self.env = env
@@ -22,13 +23,20 @@ class SingleAgentFollowerWrapper(gym.Env):
             self.leader_obs_size = self.leader_obs_space.n
         elif isinstance(self.leader_obs_space, spaces.MultiBinary):
             self.leader_obs_size = 2**self.leader_obs_space.n
+        elif isinstance(self.leader_obs_space, spaces.MultiDiscrete):
+            self.leader_obs_size = np.prod(self.leader_obs_space.nvec)
 
     @property
     def plant(self):
         return self.env.plant
 
     def _get_leader_policy(self):
-        return [self.leader_act_space.sample() for _ in range(self.leader_obs_size)]
+        if isinstance(self.env.action_space("leader"), spaces.Discrete):
+            return [self.leader_act_space.sample() for _ in range(self.leader_obs_size)]
+        elif isinstance(self.env.action_space("leader"), spaces.Box):
+            return [
+                self.leader_act_space.sample()[0] for _ in range(self.leader_obs_size)
+            ]
 
     def reset(self, leader_response=None, seed=None, options=None):
         leader_policy = (
@@ -46,6 +54,10 @@ class SingleAgentFollowerWrapper(gym.Env):
             last_leader_obs = self.last_leader_obs
         elif isinstance(self.leader_obs_space, spaces.MultiBinary):
             last_leader_obs = binary_to_decimal(self.last_leader_obs)
+        elif isinstance(self.leader_obs_space, spaces.MultiDiscrete):
+            last_leader_obs = coord_to_repr(
+                self.last_leader_obs, base=self.env.env.env.height - 1
+            )  # assume square
         return self.env.leader_response[last_leader_obs]
 
     def step(self, action):
@@ -77,18 +89,14 @@ class FollowerWrapperInfoSample(SingleAgentFollowerWrapper):
         super().__init__(env)
         if isinstance(self.leader_obs_space, spaces.MultiBinary):  # only drone game
             obs_size = self.env.observation_space("leader").n
-            obin_file_path = (
-                f"envs/dronegame_obin_size{obs_size}.npy"
-            )
+            obin_file_path = f"envs/dronegame_obin_size{obs_size}.npy"
         if os.path.isfile(obin_file_path):
             self.obs_bin = np.load(obin_file_path)
         else:
             self.obs_bin = []
             for o in range(2**obs_size):
                 print(o)
-                self.obs_bin.append(
-                    decimal_to_binary(o, width=obs_size)
-                )
+                self.obs_bin.append(decimal_to_binary(o, width=obs_size))
             np.save(obin_file_path, self.obs_bin)
 
     def _preprocess_observation(self, obs):

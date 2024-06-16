@@ -1,7 +1,7 @@
 """
 Script for training stateful meta-reinforcement learning agents
 """
-import torch
+import random
 
 from utils.config_util import load_config_args_overwrite
 from utils.evaluate import evaluate
@@ -11,7 +11,8 @@ class LeaderModelContTest:
         pass
     
     def predict(self, _, deterministic):
-        return [0.7]
+        # return [random.choice((0.48,0.52))]
+        return [0.9]
 
 def test_pretrain():
     

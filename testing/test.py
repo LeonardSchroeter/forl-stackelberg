@@ -18,7 +18,7 @@ def test(config, checkpoint_path, leader_test_env=True):
     if config.training.algo_name == "ppo":
         env = build_leader_env_ppo(config)
     elif config.training.algo_name == "rl2":
-        env = build_leader_env_rl2(config)
+        env = build_leader_env_rl2(config, run_id=None)
 
     model, _ = maybe_load_checkpoint_ppo(checkpoint_path, env)
 
@@ -35,7 +35,7 @@ def test(config, checkpoint_path, leader_test_env=True):
         while True:
             action = model.predict(obs, deterministic=True)[0]
             new_obs, rewards, terminated, truncated, _ = env.step(action)
-            print(obs, action, rewards)
+            # print(obs, action, rewards)
             obs = new_obs
 
             if terminated or truncated:

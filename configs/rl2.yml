@@ -28,7 +28,7 @@ matrix_game:
   episode_len: 10
 
 drone_game:
-  width: 23
+  width: 22
   height: 22
   drone_dist: 5
   leader_cont: True

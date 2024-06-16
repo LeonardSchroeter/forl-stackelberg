@@ -35,10 +35,6 @@ class FollowerWrapper(BaseParallelWrapper):
         if agent == "leader":
             return self.env.observation_space(agent)
 
-        leader_context_dims = [
-            self.env.action_space("leader").n for _ in range(self.num_queries)
-        ]
-
         if isinstance(self.env.observation_space(agent), spaces.Discrete):
             original_dims = [self.env.observation_space(agent).n]
         elif isinstance(self.env.observation_space(agent), spaces.MultiDiscrete):
@@ -46,7 +42,27 @@ class FollowerWrapper(BaseParallelWrapper):
         elif isinstance(self.env.observation_space(agent), spaces.MultiBinary):
             original_dims = [2] * self.env.observation_space(agent).n
 
-        return spaces.MultiDiscrete([*original_dims, *leader_context_dims])
+        if isinstance(self.env.action_space("leader"), spaces.Discrete):
+            leader_context_dims = [
+                self.env.action_space("leader").n for _ in range(self.num_queries)
+            ]
+            return spaces.MultiDiscrete([*original_dims, *leader_context_dims])
+        elif isinstance(self.env.action_space("leader"), spaces.Box):
+            return spaces.Box(
+                low=np.array(
+                    [
+                        0.0
+                        for _ in range(
+                            len(self.env.observation_space(agent).nvec)
+                            + self.num_queries
+                        )
+                    ]
+                ),
+                high=np.array(
+                    list(self.env.observation_space(agent).nvec - 1)
+                    + [1.0 for _ in range(self.num_queries)]
+                ),
+            )
 
     def reset(self):
         obs = self.env.reset()

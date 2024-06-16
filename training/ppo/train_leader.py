@@ -6,7 +6,7 @@ from wrappers.single_agent_leader import *
 
 from utils.checkpoint_util import maybe_load_checkpoint_ppo
 from utils.config_util import load_config_args_overwrite
-from utils.drone_leader_observation import decimal_to_binary
+from utils.drone_leader_observation import decimal_to_binary, repr_to_coord
 
 from training.ppo.pretrain import build_follower_env
 
@@ -20,6 +20,8 @@ def build_leader_env_ppo(config, follower_env=None, follower_model=None):
             folder = "no_initseg"
         elif config.inner_outer:
             folder = "inner_outer"
+        elif config.drone_game.leader_cont:
+            folder = "leader_cont"
         else:
             folder = ""
         follower_model, _ = maybe_load_checkpoint_ppo(
@@ -29,11 +31,24 @@ def build_leader_env_ppo(config, follower_env=None, follower_model=None):
     if config.env.name == "matrix_game":
         queries = [0, 1, 2, 3, 4]
     elif config.env.name == "drone_game":
-        num_queries = 2 ** follower_env.env.observation_space("leader").n
-        queries = [
-            decimal_to_binary(o, width=follower_env.env.observation_space("leader").n)
-            for o in range(num_queries)
-        ]
+        if config.drone_game.leader_cont:
+            num_queries = np.prod(follower_env.env.observation_space("leader").nvec)
+            queries = [
+                repr_to_coord(
+                    o,
+                    base=follower_env.env.observation_space("leader").nvec[0],
+                    width=len(follower_env.env.observation_space("leader")),
+                )
+                for o in range(num_queries)
+            ]
+        else:
+            num_queries = 2 ** follower_env.env.observation_space("leader").n
+            queries = [
+                decimal_to_binary(
+                    o, width=follower_env.env.observation_space("leader").n
+                )
+                for o in range(num_queries)
+            ]
     if config.no_initseg:
         wrapper = LeaderWrapperNoInitialSegment
     else:
@@ -51,12 +66,17 @@ def train(config):
     leader_env = build_leader_env_ppo(config)
 
     if config.training.log_wandb:
-        run = wandb.init(project="stackelberg-ppo-leader", sync_tensorboard=True)
+        run = wandb.init(project="stackelberg-ppo-leader", sync_tensorboard=True, monitor_gym=True)
+
+    if config.no_initseg:
+        folder = "no_initseg"
+    elif config.drone_game.leader_cont:
+        folder = "leader_cont"
+    else:
+        folder = ""
 
     leader_model, callback_list = maybe_load_checkpoint_ppo(
-        os.path.join(config.training.checkpoint_path, "leader_noinitseg")
-        if config.no_initseg
-        else os.path.join(config.training.checkpoint_path, "leader"),
+        os.path.join(config.training.checkpoint_path, folder, "leader"),
         leader_env,
         config.training.log_wandb,
         run_id=run.id,
@@ -66,7 +86,7 @@ def train(config):
         leader_env.set_leader_model(leader_model)
 
     leader_model.learn(
-        total_timesteps=30_000,
+        total_timesteps=300_000,
         reset_num_timesteps=False,
         callback=callback_list,
     )

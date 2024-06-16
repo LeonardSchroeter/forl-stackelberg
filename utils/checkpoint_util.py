@@ -129,7 +129,7 @@ def maybe_load_checkpoint_ppo(
     latest_step = _latest_step(checkpoint_path) if os.listdir(checkpoint_path) else 0
 
     checkpoint_callback = CheckpointCallback(
-        save_freq=10,
+        save_freq=save_freq,
         save_path=checkpoint_path,
         name_prefix="model",
         save_replay_buffer=True,
