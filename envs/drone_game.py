@@ -167,8 +167,6 @@ class DroneGame(ParallelEnv):
 
         self.sleep_time = 0.0
 
-        self.follower_captured = False
-
     def action_space(self, agent: str) -> spaces.Space:
         return self.action_spaces[agent]
 
@@ -176,6 +174,7 @@ class DroneGame(ParallelEnv):
         return self.observation_spaces[agent]
 
     def reset(self):
+        self.follower_captured = False
         self.env.reset()
         leader_obs = []
         for _ in range(2 * self.drone_life_span):
