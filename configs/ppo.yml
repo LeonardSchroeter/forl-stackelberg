@@ -1,5 +1,12 @@
 # Note: current code only allows config.yml with 2 layers
 # And cannot add config parameters with same names but under different parents
+algo: "ppo"
+game: "drone_game"
+no_initseg: False
+inner_outer: False
+leader_test_env: False
+checkpoint_path: "checkpoints/drone_game/ppo"
+
 env:
   name: "drone_game"
 

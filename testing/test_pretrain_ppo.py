@@ -4,18 +4,13 @@ import numpy as np
 
 from training.ppo.pretrain import build_follower_env
 from utils.checkpoint_util import maybe_load_checkpoint_ppo
-from utils.config_util import load_config_args_overwrite
-
-import argparse
-
-parser = argparse.ArgumentParser()
-parser.add_argument("--algo", choices=["ppo", "rl2"], default="rl2")
+from utils.config_util import load_config
 
 
-def test_pretrain(config, checkpoint_path):
+def test_pretrain(config):
     env = build_follower_env(config)
 
-    model, _ = maybe_load_checkpoint_ppo(checkpoint_path, env)
+    model, _ = maybe_load_checkpoint_ppo(config.checkpoint_path, env)
 
     if config.env.name == "matrix_game":
         for response in [[1, 1, 1, 1, 1], [0, 0, 0, 0, 0], [0, 0, 0, 1, 1]]:
@@ -47,16 +42,12 @@ def test_pretrain(config, checkpoint_path):
 
 
 if __name__ == "__main__":
-    config = load_config_args_overwrite(parser=parser)
+    config = load_config("rl2")
+
     if config.inner_outer:
         folder = "inner_outer"
     elif config.env.name == "drone_game" and config.drone_game.leader_cont:
         folder = "leader_cont"
     else:
         folder = ""
-    test_pretrain(
-        config,
-        checkpoint_path=os.path.join(
-            config.training.checkpoint_path, folder, "follower"
-        ),
-    )
+    test_pretrain(config)

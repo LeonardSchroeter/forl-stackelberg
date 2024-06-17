@@ -2,10 +2,8 @@ import os
 
 import wandb
 
-from wrappers.single_agent_follower import *
-
 from utils.checkpoint_util import maybe_load_checkpoint_ppo
-from utils.config_util import load_config_args_overwrite
+from utils.config_util import load_config
 
 from training.ppo.pretrain import build_follower_env
 from training.ppo.train_leader import build_leader_env_ppo
@@ -15,7 +13,7 @@ def maybe_load_model(config, follower_training_config, run_id=0):
     follower_env = build_follower_env(config, inner_outer=True)
 
     follower_model, follower_callback_list = maybe_load_checkpoint_ppo(
-        os.path.join(config.training.checkpoint_path, "inner_outer", "follower"),
+        os.path.join(config.checkpoint_path, "follower"),
         follower_env,
         config.training.log_wandb & (run_id != 0),
         follower_training_config,
@@ -27,7 +25,7 @@ def maybe_load_model(config, follower_training_config, run_id=0):
     )
 
     leader_model, leader_callback_list = maybe_load_checkpoint_ppo(
-        os.path.join(config.training.checkpoint_path, "inner_outer", "leader"),
+        os.path.join(config.checkpoint_path, "leader"),
         leader_env,
         log_wandb=False,
         run_id=run_id,
@@ -76,7 +74,7 @@ def train(config, follower_training_config):
 
 
 if __name__ == "__main__":
-    config = load_config_args_overwrite("configs/ppo.yml")
+    config = load_config("ppo")
     follower_training_config = {
         "learning_rate": lambda progress: config.training.pretrain_start_lr
         * (1 - progress)

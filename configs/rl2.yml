@@ -1,4 +1,11 @@
 # Note: current code only allows config.yml with 2 layers
+algo: "rl2"
+game: "drone_game"
+no_initseg: False
+inner_outer: False
+leader_test_env: False
+checkpoint_path: "checkpoints/drone_game/rl2"
+
 env:
   name: "drone_game"
   num_meta_episodes: 3

@@ -1,11 +1,12 @@
 import os
 
 import wandb
+import numpy as np
 
-from wrappers.single_agent_leader import *
+from wrappers.single_agent_leader import LeaderWrapperNoInitialSegment, SingleAgentQueryLeaderWrapper
 
 from utils.checkpoint_util import maybe_load_checkpoint_ppo
-from utils.config_util import load_config_args_overwrite
+from utils.config_util import load_config
 from utils.drone_leader_observation import decimal_to_binary, repr_to_coord
 
 from training.ppo.pretrain import build_follower_env
@@ -16,16 +17,8 @@ def build_leader_env_ppo(config, follower_env=None, follower_model=None):
         follower_env = build_follower_env(config)
 
     if follower_model is None:
-        if config.no_initseg:
-            folder = "no_initseg"
-        elif config.inner_outer:
-            folder = "inner_outer"
-        elif config.drone_game.leader_cont:
-            folder = "leader_cont"
-        else:
-            folder = ""
         follower_model, _ = maybe_load_checkpoint_ppo(
-            os.path.join(config.training.checkpoint_path, folder, "follower"),
+            os.path.join(config.checkpoint_path, "follower"),
             follower_env,
         )
     if config.env.name == "matrix_game":
@@ -68,15 +61,8 @@ def train(config):
     if config.training.log_wandb:
         run = wandb.init(project="stackelberg-ppo-leader", sync_tensorboard=True, monitor_gym=True)
 
-    if config.no_initseg:
-        folder = "no_initseg"
-    elif config.drone_game.leader_cont:
-        folder = "leader_cont"
-    else:
-        folder = ""
-
     leader_model, callback_list = maybe_load_checkpoint_ppo(
-        os.path.join(config.training.checkpoint_path, folder, "leader"),
+        os.path.join(config.checkpoint_path, "leader"),
         leader_env,
         config.training.log_wandb,
         run_id=run.id,
@@ -93,5 +79,5 @@ def train(config):
 
 
 if __name__ == "__main__":
-    config = load_config_args_overwrite("configs/ppo.yml")
+    config = load_config("ppo")
     train(config)

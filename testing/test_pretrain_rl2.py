@@ -1,9 +1,7 @@
 """
 Script for training stateful meta-reinforcement learning agents
 """
-import random
-
-from utils.config_util import load_config_args_overwrite
+from utils.config_util import load_config
 from utils.evaluate import evaluate
 
 class LeaderModelContTest:
@@ -16,7 +14,7 @@ class LeaderModelContTest:
 
 def test_pretrain():
     
-    config = load_config_args_overwrite("configs/rl2.yml")
+    config = load_config("rl2.yml")
     
     if config.env.name == "matrix_game":
         evaluate(config, verbose=True, leader_policy=[1, 0, 0, 1, 1])

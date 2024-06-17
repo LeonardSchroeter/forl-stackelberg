@@ -1,16 +1,18 @@
 import os
 
 import wandb
+import numpy as np
+from gymnasium import spaces
 
 from envs.matrix_game import IteratedMatrixGame
 
 from envs.drone_game import DroneGame, DroneGameEnv
-from wrappers.single_agent_follower import *
+from wrappers.single_agent_follower import FollowerWrapperInfoSample, SingleAgentFollowerWrapper
 
 from wrappers.follower import ContextualPolicyWrapper
 
 from utils.checkpoint_util import maybe_load_checkpoint_ppo
-from utils.config_util import load_config_args_overwrite
+from utils.config_util import load_config
 
 
 def build_follower_env(config, inner_outer=False):
@@ -54,13 +56,8 @@ def pretrain(config, pretrain_config, follower_env=None):
     if config.training.log_wandb:
         run = wandb.init(project="stackelberg-ppo-follower", sync_tensorboard=True)
 
-    if config.drone_game.leader_cont:
-        folder = "leader_cont"
-    else:
-        folder = ""
-
     follower_model, callback_list = maybe_load_checkpoint_ppo(
-        os.path.join(config.training.checkpoint_path, folder, "follower"),
+        os.path.join(config.checkpoint_path, "follower"),
         follower_env,
         config.training.log_wandb,
         pretrain_config,
@@ -77,7 +74,7 @@ def pretrain(config, pretrain_config, follower_env=None):
 
 
 if __name__ == "__main__":
-    config = config = load_config_args_overwrite("configs/ppo.yml")
+    config = config = load_config("ppo")
 
     pretrain_config = {
         "learning_rate": lambda progress: config.training.pretrain_start_lr

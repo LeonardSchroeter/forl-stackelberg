@@ -16,7 +16,7 @@ from rl2_agents.heads.policy_heads import LinearPolicyHead
 from rl2_agents.heads.value_heads import LinearValueHead
 from algos.ppo import training_loop
 
-from utils.config_util import load_config_args_overwrite
+from utils.config_util import load_config
 from utils.checkpoint_util import (
     maybe_load_checkpoint_rl2,
     save_checkpoint_rl2,
@@ -73,7 +73,7 @@ def create_head(head_type, num_features, num_actions):
 def main():
     print("Using device:", DEVICE)
 
-    config = load_config_args_overwrite("configs/rl2.yml")
+    config = load_config("rl2")
 
     comm = get_comm()
 
@@ -115,10 +115,6 @@ def main():
     value_scheduler = None
 
     model_name = "follower"
-    if config.inner_outer:
-        model_name = os.path.join("inner_outer", model_name)
-    elif config.env.name == "drone_game" and config.drone_game.leader_cont:
-        model_name = os.path.join("leader_cont", model_name)
     policy_model_name = os.path.join(model_name, "policy_net")
     value_model_name = os.path.join(model_name, "value_net")
 
@@ -126,7 +122,7 @@ def main():
     pol_iters_so_far = 0
     if comm.Get_rank() == ROOT_RANK:
         a = maybe_load_checkpoint_rl2(
-            checkpoint_dir=config.training.checkpoint_path,
+            checkpoint_dir=config.checkpoint_path,
             model_name=policy_model_name,
             model=policy_net,
             optimizer=policy_optimizer,
@@ -135,7 +131,7 @@ def main():
         )
 
         b = maybe_load_checkpoint_rl2(
-            checkpoint_dir=config.training.checkpoint_path,
+            checkpoint_dir=config.checkpoint_path,
             model_name=value_model_name,
             model=value_net,
             optimizer=value_optimizer,
@@ -169,7 +165,7 @@ def main():
     # make callback functions for checkpointing.
     policy_checkpoint_fn = partial(
         save_checkpoint_rl2,
-        checkpoint_dir=config.training.checkpoint_path,
+        checkpoint_dir=config.checkpoint_path,
         model_name=policy_model_name,
         model=policy_net,
         optimizer=policy_optimizer,
@@ -178,7 +174,7 @@ def main():
 
     value_checkpoint_fn = partial(
         save_checkpoint_rl2,
-        checkpoint_dir=config.training.checkpoint_path,
+        checkpoint_dir=config.checkpoint_path,
         model_name=value_model_name,
         model=value_net,
         optimizer=value_optimizer,
@@ -193,7 +189,7 @@ def main():
 
         training_config = {"n_steps": 128}
         leader_model, leader_callback_list = maybe_load_checkpoint_ppo(
-            os.path.join(config.training.checkpoint_path, "inner_outer", "leader"),
+            os.path.join(config.checkpoint_path, "leader"),
             leader_env,
             training_config=training_config,
             save_freq=10,

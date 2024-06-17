@@ -6,3 +6,4 @@ stable_baselines3==2.3.2
 tensorboard==2.14.0
 torch==2.3.1
 wandb==0.17.1
+-e .

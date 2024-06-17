@@ -1,8 +1,9 @@
-import sys, os
+import sys
+import os
 
 sys.path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), "..", ".."))
 
-from utils.config_util import load_config_args_overwrite
+from utils.config_util import load_config
 from utils.setup_experiment import create_env, get_policy_net_for_inference
 from utils.checkpoint_util import maybe_load_checkpoint_ppo
 
@@ -28,12 +29,8 @@ def train(config):
 
     env = build_leader_env_rl2(config)
 
-    if (config.env.name == "drone_game") and (config.drone_game.leader_cont):
-        folder = "leader_cont"
-    else:
-        folder = ""
     model, callback_list = maybe_load_checkpoint_ppo(
-        os.path.join(config.training.checkpoint_path, folder, "leader"),
+        os.path.join(config.checkpoint_path, "leader"),
         env,
         config.training.log_wandb,
         run_id=run.id,
@@ -49,6 +46,6 @@ def train(config):
 
 if __name__ == "__main__":
 
-    config = load_config_args_overwrite("configs/rl2.yml")
+    config = load_config("rl2")
 
     train(config)

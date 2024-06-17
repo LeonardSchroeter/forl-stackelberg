@@ -1,10 +1,10 @@
 from stable_baselines3.common.evaluation import evaluate_policy
 from ray import tune
 
-from utils.config_util import load_config_args_overwrite
+from utils.config_util import load_config
 from training.ppo.pretrain import pretrain, build_follower_env
 
-config = load_config_args_overwrite("configs/ppo.yml")
+config = load_config("ppo")
 
 def objective(pretrain_config):
     follower_env = build_follower_env(config)
