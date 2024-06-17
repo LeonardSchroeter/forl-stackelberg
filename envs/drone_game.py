@@ -28,7 +28,7 @@ from utils.point import Point2D
 class DroneGameEnv(MiniGridEnv):
     def __init__(
         self,
-        width=23,
+        width=22,
         height=22,
         agent_start_dir=0,
         agent_dir_fixed=True,
@@ -43,15 +43,17 @@ class DroneGameEnv(MiniGridEnv):
         #         np.random.randint(1, size - 1),
         #     )
         # else:
+        assert width == height
         self.agent_start_pos = (1, int((height - 2) / 2))
         self.agent_start_dir = agent_start_dir
         self.agent_dir_fixed = agent_dir_fixed
         self.agent_view_size = agent_view_size
-        
+
+        self.drone_x = int((width - 3) * 0.75)
         self.drone_options = []
         drone_ys = np.arange(3, height + 1, step=drone_dist)
         for y in drone_ys:
-            self.drone_options.append((int((width - 3) * 0.75), y))
+            self.drone_options.append((self.drone_x, y))
 
         self.num_divisions = len(self.drone_options)
         self.drone_cover_size = drone_cover_size
@@ -103,43 +105,67 @@ class DroneGame(ParallelEnv):
         "name": "drone_game",
     }
 
-    def __init__(self, env: DroneGameEnv, headless: bool = False) -> None:
+    def __init__(
+        self, env: DroneGameEnv, leader_cont: bool = False, headless: bool = False
+    ) -> None:
         super().__init__()
 
         self.env = env
         self.headless = headless
         if not headless:
             self.env.render_mode = "human"
+        else:
+            self.env.render_mode = "rgb"
 
         self.agents = ["leader", "follower"]
 
         agent_view_area = env.agent_view_size * env.agent_view_size
         # grid_area = (env.width - 2) * (env.height - 2) # The outer are walls so -2
 
+        self.leader_cont = leader_cont
+        self.drone_life_span = len(self.env.drone_options)
+
         # leader action: which of prescribed places to place drone
         # follower action: fwd(0), fwd-left(1), fwd-right(2)
         self.action_spaces = {
-            "leader": spaces.Discrete(len(self.env.drone_options)),
+            "leader": spaces.Box(0, 1, (1,))
+            if leader_cont
+            else spaces.Discrete(len(self.env.drone_options)),
             "follower": spaces.Discrete(3),
         }
         # leader observation: which division does the follower lie in
         # follower observation: wall occupancy in its local view size
+        leader_obs_space = (
+            spaces.MultiDiscrete(
+                [self.env.width - 1, self.env.height - 1] * self.drone_life_span
+            )
+            if leader_cont
+            else spaces.MultiBinary(self.env.num_divisions),
+        )
         self.observation_spaces = {
-            "leader": spaces.MultiBinary(self.env.num_divisions),
+            "leader": leader_obs_space[0],
             "follower": spaces.MultiDiscrete(
                 [
                     self.env.height,
                     self.env.width,
                     *([4] * agent_view_area),
+                    *(leader_obs_space[0].nvec),
+                    self.env.height - 4,
+                ]
+                if self.leader_cont
+                else [
+                    self.env.height,
+                    self.env.width,
+                    *([4] * agent_view_area),
                     *([2] * self.env.num_divisions),
-                    len(self.env.drone_options),
+                    self.action_spaces["leader"].n,
                 ]
             ),
         }
 
         self.drones = []
 
-        self.sleep_time = 0
+        self.sleep_time = 0.0
 
     def action_space(self, agent: str) -> spaces.Space:
         return self.action_spaces[agent]
@@ -148,12 +174,16 @@ class DroneGame(ParallelEnv):
         return self.observation_spaces[agent]
 
     def reset(self):
+        self.follower_captured = False
         self.env.reset()
+        leader_obs = []
+        for _ in range(2 * self.drone_life_span):
+            leader_obs.append(0)
         return {
-            "leader": np.zeros(self.env.num_divisions),
-            "follower": np.zeros(
-                len(self.observation_space("follower").nvec)
-            ),
+            "leader": leader_obs
+            if self.leader_cont
+            else np.zeros(self.env.num_divisions),
+            "follower": np.zeros(len(self.observation_space("follower").nvec)),
         }
 
     def step(self, actions):
@@ -197,11 +227,23 @@ class DroneGame(ParallelEnv):
         return observations, rewards, terminated, truncated, info
 
     def leader_act(self, action):
-        drone_place = self.env.drone_options[action]
+        drone_place = (
+            (
+                self.env.drone_x,
+                np.clip(
+                    int(action * (self.env.height - 5)) + 2,
+                    0,
+                    self.env.height - 3,
+                    dtype=int,
+                ),
+            )
+            if self.leader_cont
+            else self.env.drone_options[action]
+        )
         self.drones.append(Drone(env=self.env, radius=1, center=drone_place))
 
     def transition_drones(self):
-        if len(self.drones) >= self.env.num_divisions:
+        if len(self.drones) >= self.drone_life_span:
             dead_drone = self.drones.pop(0)
             dead_drone.undo_lava()
             del dead_drone
@@ -214,22 +256,31 @@ class DroneGame(ParallelEnv):
             drone.set_lava()
 
     def get_leader_observation(self):
-        observation = np.zeros(self.env.num_divisions)
+        if self.leader_cont:
+            drone_coords = []
+            for drone in self.drones:
+                drone_coords.append((drone.center.y + 1, drone.center.x + 1))
+            while len(drone_coords) < self.drone_life_span:
+                drone_coords.append((0, 0))
+            observation = np.flip(sorted(drone_coords), axis=-1).flatten()
+        else:
+            observation = np.zeros(self.env.num_divisions)
 
-        for drone in self.drones:
-            dists = [
-                drone.center.euclidean_distance(Point2D(i, j))
-                for i, j in self.env.drone_options
-            ]
-            index = np.argmin(dists)
-            observation[index] = 1
+            for drone in self.drones:
+                dists = [
+                    drone.center.euclidean_distance(Point2D(i, j))
+                    for i, j in self.env.drone_options
+                ]
+                index = np.argmin(dists)
+                observation[index] = 1
 
         return observation
 
     def get_leader_reward(self):
         if isinstance(
             self.env.grid.get(self.env.agent_pos[0], self.env.agent_pos[1]), LavaColored
-        ):
+        ) and (not self.follower_captured):
+            self.follower_captured = True
             return 1
 
         return 0
@@ -267,16 +318,14 @@ class DroneGame(ParallelEnv):
                 elif isinstance(self.env.grid.get(i, j), Wall):
                     observation[i_local, j_local] = 3
 
-        observation = np.insert(
-            observation.flatten(), 0, self.env.agent_pos[1] / self.env.height
-        )
-        observation = np.insert(observation, 0, self.env.agent_pos[0] / self.env.width)
+        observation = np.insert(observation.flatten(), 0, self.env.agent_pos[1])
+        observation = np.insert(observation, 0, self.env.agent_pos[0])
 
         observation = np.concatenate((observation, leader_observation), axis=-1)
         observation = np.append(observation, leader_action)
 
         return observation
-    
+
     def close(self, video_name):
         self.env.close(video_name)
 
@@ -334,8 +383,8 @@ class Drone:
 
 if __name__ == "__main__":
     # env = DroneGameEnv(agent_start_pos=(3, 10), agent_dir_fixed=True)
-    env = DroneGameEnv(agent_start_pos=(1, 10), agent_dir_fixed=True, agent_start_dir=0)
-    env = DroneGame(env=env)
+    env = DroneGameEnv()
+    env = DroneGame(env=env, leader_cont=True)
 
     follower_action_seq = [0, 0, 0, 0, 0, 2, 2, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0]
 
@@ -348,7 +397,7 @@ if __name__ == "__main__":
             actions["follower"] = follower_action_seq[i]
         else:
             actions["follower"] = 0
-        actions["leader"] = i % 4
+        actions["leader"] = np.clip(i, 0, env.env.height - 5)
         observation, reward, terminated, _, _ = env.step(actions)
         if terminated["follower"]:
             break

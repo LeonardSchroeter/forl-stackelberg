@@ -114,14 +114,20 @@ def main():
     policy_scheduler = None
     value_scheduler = None
 
+    model_name = "follower"
+    if config.inner_outer:
+        model_name = os.path.join("inner_outer", model_name)
+    elif config.env.name == "drone_game" and config.drone_game.leader_cont:
+        model_name = os.path.join("leader_cont", model_name)
+    policy_model_name = os.path.join(model_name, "policy_net")
+    value_model_name = os.path.join(model_name, "value_net")
+
     # load checkpoint, if applicable.
     pol_iters_so_far = 0
     if comm.Get_rank() == ROOT_RANK:
         a = maybe_load_checkpoint_rl2(
             checkpoint_dir=config.training.checkpoint_path,
-            model_name="inner_outer/follower/policy_net"
-            if config.training.rl2_inner_outer
-            else "follower/policy_net",
+            model_name=policy_model_name,
             model=policy_net,
             optimizer=policy_optimizer,
             scheduler=policy_scheduler,
@@ -130,9 +136,7 @@ def main():
 
         b = maybe_load_checkpoint_rl2(
             checkpoint_dir=config.training.checkpoint_path,
-            model_name="inner_outer/follower/value_net"
-            if config.training.rl2_inner_outer
-            else "follower/value_net",
+            model_name=value_model_name,
             model=value_net,
             optimizer=value_optimizer,
             scheduler=value_scheduler,
@@ -166,9 +170,7 @@ def main():
     policy_checkpoint_fn = partial(
         save_checkpoint_rl2,
         checkpoint_dir=config.training.checkpoint_path,
-        model_name="inner_outer/follower/policy_net"
-        if config.training.rl2_inner_outer
-        else "follower/policy_net",
+        model_name=policy_model_name,
         model=policy_net,
         optimizer=policy_optimizer,
         scheduler=policy_scheduler,
@@ -177,15 +179,13 @@ def main():
     value_checkpoint_fn = partial(
         save_checkpoint_rl2,
         checkpoint_dir=config.training.checkpoint_path,
-        model_name="inner_outer/follower/value_net"
-        if config.training.rl2_inner_outer
-        else "follower/value_net",
+        model_name=value_model_name,
         model=value_net,
         optimizer=value_optimizer,
         scheduler=value_scheduler,
     )
 
-    if config.training.rl2_inner_outer:
+    if config.inner_outer:
         leader_env = TrialWrapper(env._env, num_episodes=3)
         leader_env = SingleAgentLeaderWrapperMetaRL(
             leader_env, follower_policy_net=policy_net
@@ -200,7 +200,10 @@ def main():
         )
         env.set_leader_model(leader_model)
     else:
+        if (config.env.name == "drone_game") and (config.drone_game.leader_cont):
+            env.set_follower_policy_net(follower_policy_net=policy_net)
         leader_model = None
+        leader_callback_list = (None,)
 
     training_loop(
         env=env,
@@ -225,7 +228,7 @@ def main():
         value_checkpoint_fn=value_checkpoint_fn,
         comm=comm,
         log_wandb=config.training.log_wandb,
-        inner_outer=config.training.rl2_inner_outer,
+        inner_outer=config.inner_outer,
         leader_callback_list=leader_callback_list,
         leader_model=leader_model,
     )

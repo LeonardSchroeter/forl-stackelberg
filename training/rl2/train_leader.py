@@ -1,4 +1,6 @@
-import os
+import sys, os
+
+sys.path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), "..", ".."))
 
 from utils.config_util import load_config_args_overwrite
 from utils.setup_experiment import create_env, get_policy_net_for_inference
@@ -22,12 +24,16 @@ def build_leader_env_rl2(config):
 
 def train(config):
 
-    env = build_leader_env_rl2(config)
-    
-    run = wandb.init(project="stackelberg-rl2-leader", sync_tensorboard=True)
+    run = wandb.init(project="stackelberg-rl2-leader", sync_tensorboard=True, monitor_gym=True)
 
+    env = build_leader_env_rl2(config)
+
+    if (config.env.name == "drone_game") and (config.drone_game.leader_cont):
+        folder = "leader_cont"
+    else:
+        folder = ""
     model, callback_list = maybe_load_checkpoint_ppo(
-        os.path.join(config.training.checkpoint_path, "leader"),
+        os.path.join(config.training.checkpoint_path, folder, "leader"),
         env,
         config.training.log_wandb,
         run_id=run.id,

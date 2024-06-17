@@ -1,6 +1,6 @@
 from pettingzoo.utils.wrappers import BaseParallelWrapper
 
-from rl2.envs.stackelberg.matrix_game import IteratedMatrixGame
+from envs.matrix_game import IteratedMatrixGame
 
 
 class TrialWrapper(BaseParallelWrapper):

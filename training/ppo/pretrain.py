@@ -12,6 +12,7 @@ from wrappers.follower import ContextualPolicyWrapper
 from utils.checkpoint_util import maybe_load_checkpoint_ppo
 from utils.config_util import load_config_args_overwrite
 
+
 def build_follower_env(config, inner_outer=False):
     if config.env.name == "matrix_game":
         follower_env = ContextualPolicyWrapper(
@@ -26,9 +27,17 @@ def build_follower_env(config, inner_outer=False):
         env = DroneGameEnv(
             width=config.drone_game.width, height=config.drone_game.height
         )
-        env = DroneGame(env=env, headless=config.drone_game.headless)
+        env = DroneGame(
+            env=env,
+            headless=config.drone_game.headless,
+            leader_cont=config.drone_game.leader_cont,
+        )
+        if isinstance(env.observation_space("leader"), spaces.MultiBinary):
+            num_queries = 2 ** env.observation_space("leader").n
+        elif isinstance(env.observation_space("leader"), spaces.MultiDiscrete):
+            num_queries = np.prod(env.observation_space("leader").nvec)
         follower_env = ContextualPolicyWrapper(
-            env=env, num_queries=2 ** env.observation_space("leader").n
+            env=env, num_queries=num_queries
         )
     if inner_outer:
         follower_env = FollowerWrapperInfoSample(follower_env)
@@ -41,12 +50,17 @@ def build_follower_env(config, inner_outer=False):
 def pretrain(config, pretrain_config, follower_env=None):
     if follower_env is None:
         follower_env = build_follower_env(config)
-    
+
     if config.training.log_wandb:
         run = wandb.init(project="stackelberg-ppo-follower", sync_tensorboard=True)
-    
+
+    if config.drone_game.leader_cont:
+        folder = "leader_cont"
+    else:
+        folder = ""
+
     follower_model, callback_list = maybe_load_checkpoint_ppo(
-        os.path.join(config.training.checkpoint_path, "follower"),
+        os.path.join(config.training.checkpoint_path, folder, "follower"),
         follower_env,
         config.training.log_wandb,
         pretrain_config,
@@ -61,8 +75,8 @@ def pretrain(config, pretrain_config, follower_env=None):
 
     return follower_model
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     config = config = load_config_args_overwrite("configs/ppo.yml")
 
     pretrain_config = {

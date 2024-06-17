@@ -23,21 +23,13 @@ training:
   adam_wd: 0.01
   log_wandb: True
 
-bandit:
-  num_actions: 5
-  episode_len: 10
-
-mdp:
-  num_states: 10
-  num_actions: 5
-  episode_len: 10
-
 matrix_game:
   memory: 2
   episode_len: 10
 
 drone_game:
-  width: 23
+  width: 22
   height: 22
   drone_dist: 5
+  leader_cont: True
   headless: True # Only for training, testing is always not headless

@@ -69,7 +69,7 @@ def train(config, follower_training_config):
         )
         
         leader_model.learn(
-            total_timesteps=1000,
+            total_timesteps=3000,
             reset_num_timesteps=False,
             callback=leader_callback_list,
         )

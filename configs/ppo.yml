@@ -13,8 +13,8 @@ training:
   pretrain_end_lr: 1.0e-5
   pretrain_gamma: 0.95
   pretrain_ent_coef: 0.0
-  pretrain_batch_size: 128
-  pretrain_n_steps: 512
+  pretrain_batch_size: 180
+  pretrain_n_steps: 180
   log_wandb: True
 
 matrix_game:
@@ -22,8 +22,9 @@ matrix_game:
   episode_len: 10
 
 drone_game:
-  width: 53
-  height: 52
+  width: 12
+  height: 12
   drone_dist: 5
+  leader_cont: True
   headless: True # Only for training, testing is always not headless
   video_name: "size6_context_drone0.avi"

@@ -1,5 +1,7 @@
-from envs.rl2.bandit_env import BanditEnv
-from envs.rl2.mdp_env import MDPEnv
+import os
+
+import gymnasium as gym
+
 from envs.rl2.mat_game_follower_env import (
     MatGameFollowerEnv,
     IteratedMatrixGame,
@@ -12,7 +14,6 @@ from envs.rl2.drone_game_follower_env import (
 from envs.drone_game import DroneGameEnv
 
 from rl2_agents.preprocessing.tabular import (
-    MABPreprocessing,
     MDPPreprocessing,
     DGFPreprocessing,
 )
@@ -30,14 +31,6 @@ from utils.checkpoint_util import maybe_load_checkpoint_rl2
 
 
 def create_env(config):
-    if config.env.name == "bandit":
-        return BanditEnv(num_actions=config.bandit.num_actions)
-    if config.env.name == "tabular_mdp":
-        return MDPEnv(
-            num_states=config.mdp.num_states,
-            num_actions=config.mdp.num_actions,
-            max_episode_length=config.mdp.episode_len,
-        )
     if config.env.name == "matrix_game":
         return MatGameFollowerEnv(
             env=IteratedMatrixGame(
@@ -47,33 +40,38 @@ def create_env(config):
             )
         )
     if config.env.name == "drone_game":
-        env = DroneGame(
-            env=DroneGameEnv(
-                width=config.drone_game.width,
-                height=config.drone_game.height,
-                drone_dist=config.drone_game.drone_dist,
-            ),
-            headless=config.drone_game.headless,
+        env = DroneGameEnv(
+            width=config.drone_game.width,
+            height=config.drone_game.height,
+            drone_dist=config.drone_game.drone_dist,
         )
-        return (
+        env = DroneGame(
+            env,
+            headless=config.drone_game.headless,
+            leader_cont=config.drone_game.leader_cont,
+        )
+        env = (
             DroneGameFollowerInfoSample(env)
-            if config.training.rl2_inner_outer
+            if config.inner_outer
             else DroneGameFollowerEnv(env)
         )
+        if config.drone_game.leader_cont:
+            env.inject_rand_noise()
+        return env
 
     raise NotImplementedError
 
 
 def create_preprocessing(env):
-    if env.name == "bandit":
-        return MABPreprocessing(num_actions=env.num_actions)
-    if (env.name == "tabular_mdp") or (env.name == "matrix_game"):
+    if env.name == "matrix_game":
         return MDPPreprocessing(num_states=env.num_states, num_actions=env.num_actions)
     if env.name == "drone_game":
         return DGFPreprocessing(
             num_states=env.num_states,
             dim_states=env.dim_states,
             num_actions=env.num_actions,
+            env_height=env._env.env.height,
+            leader_cont=env.leader_cont,
         )
     raise NotImplementedError
 
@@ -163,11 +161,16 @@ def get_policy_net_for_inference(env, config):
     policy_net = policy_net.to(DEVICE)
 
     # load checkpoint, if applicable.
+    if config.inner_outer:
+        folder = "inner_outer"
+    elif (config.drone_game.leader_cont) and (config.env.name == "drone_game"):
+        folder = "leader_cont"
+    else:
+        folder = ""
+    model_name = os.path.join(folder, "follower", "policy_net")
     maybe_load_checkpoint_rl2(
         checkpoint_dir=config.training.checkpoint_path,
-        model_name="inner_outer/follower/policy_net"
-        if config.training.rl2_inner_outer
-        else "follower/policy_net",
+        model_name=model_name,
         model=policy_net,
         optimizer=None,
         scheduler=None,
