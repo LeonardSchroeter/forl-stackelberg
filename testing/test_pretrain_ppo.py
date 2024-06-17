@@ -1,5 +1,3 @@
-import os
-
 import numpy as np
 
 from training.ppo.pretrain import build_follower_env

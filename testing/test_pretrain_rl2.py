@@ -14,7 +14,7 @@ class LeaderModelContTest:
 
 def test_pretrain():
     
-    config = load_config("rl2.yml")
+    config = load_config("rl2")
     
     if config.env.name == "matrix_game":
         evaluate(config, verbose=True, leader_policy=[1, 0, 0, 1, 1])

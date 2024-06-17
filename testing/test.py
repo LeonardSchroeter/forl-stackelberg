@@ -49,14 +49,6 @@ def test(config, leader_test_env=True):
 
 if __name__ == "__main__":
     config = load_config("rl2")
-    if config.inner_outer:
-        folder = "inner_outer"
-    elif config.no_initseg:
-        folder = "no_initseg"
-    elif config.env.name == "drone_game" and config.drone_game.leader_cont:
-        folder = "leader_cont"
-    else:
-        folder = ""
     test(
         config,
         leader_test_env=config.leader_test_env,
