@@ -1,18 +1,19 @@
 import numpy as np
 from ray import tune
 
-from stackerlberg.train_tabular_q import Train
-from envs import FollowerWrapper, IteratedMatrixGame
+from training.train_tabular_q import TrainTabQ
+from envs.matrix_game import IteratedMatrixGame
+from wrappers.follower import ContextualPolicyWrapper
 
 
 def objective(config):
     scores = []
     for i in range(10):
-        env = FollowerWrapper(
+        env = ContextualPolicyWrapper(
             IteratedMatrixGame(matrix="prisoners_dilemma", episode_length=10, memory=2),
             num_queries=5,
         )
-        q = Train(env, config=config)
+        q = TrainTabQ(env, config=config)
         q.train_follower()
         returns = q.train_leader()
         score = np.mean(returns["leader"])

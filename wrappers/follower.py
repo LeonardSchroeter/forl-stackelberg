@@ -10,7 +10,7 @@ import numpy as np
 
 # Wrapper that appends the leader's deterministic policy to the follower's observation
 # Only works for small leader observation spaces
-class FollowerWrapper(BaseParallelWrapper):
+class ContextualPolicyWrapper(BaseParallelWrapper):
     def __init__(self, env, num_queries: int, leader_response=None):
         assert num_queries > 0, "num_queries must be greater than 0"
         assert leader_response is None or num_queries == len(

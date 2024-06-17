@@ -3,13 +3,13 @@ import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
 
-from wrappers.follower import FollowerWrapper
+from wrappers.follower import ContextualPolicyWrapper
 
 
 class SingleAgentLeaderWrapper(gym.Env):
     def __init__(
         self,
-        env: FollowerWrapper,
+        env: ContextualPolicyWrapper,
         queries,
         follower_model,
         follower_epsilon_greedy: bool = False,
@@ -75,7 +75,7 @@ class SingleAgentLeaderWrapper(gym.Env):
 class SingleAgentQueryLeaderWrapper(SingleAgentLeaderWrapper):
     def __init__(
         self,
-        env: FollowerWrapper,
+        env: ContextualPolicyWrapper,
         queries,
         follower_model,
         follower_epsilon_greedy: bool = False,
@@ -130,7 +130,7 @@ class SingleAgentQueryLeaderWrapper(SingleAgentLeaderWrapper):
 class LeaderWrapperNoInitialSegment(SingleAgentLeaderWrapper):
     def __init__(
         self,
-        env: FollowerWrapper,
+        env: ContextualPolicyWrapper,
         queries,
         follower_model,
         leader_model=None,

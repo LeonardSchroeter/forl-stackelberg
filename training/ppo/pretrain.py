@@ -7,7 +7,7 @@ from envs.matrix_game import IteratedMatrixGame
 from envs.drone_game import DroneGame, DroneGameEnv
 from wrappers.single_agent_follower import *
 
-from wrappers.follower import FollowerWrapper
+from wrappers.follower import ContextualPolicyWrapper
 
 from utils.checkpoint_util import maybe_load_checkpoint_ppo
 from utils.config_util import load_config_args_overwrite
@@ -15,7 +15,7 @@ from utils.config_util import load_config_args_overwrite
 
 def build_follower_env(config, inner_outer=False):
     if config.env.name == "matrix_game":
-        follower_env = FollowerWrapper(
+        follower_env = ContextualPolicyWrapper(
             IteratedMatrixGame(
                 matrix="prisoners_dilemma",
                 episode_length=config.matrix_game.episode_len,
@@ -36,7 +36,7 @@ def build_follower_env(config, inner_outer=False):
             num_queries = 2 ** env.observation_space("leader").n
         elif isinstance(env.observation_space("leader"), spaces.MultiDiscrete):
             num_queries = np.prod(env.observation_space("leader").nvec)
-        follower_env = FollowerWrapper(
+        follower_env = ContextualPolicyWrapper(
             env=env, num_queries=num_queries
         )
     if inner_outer:

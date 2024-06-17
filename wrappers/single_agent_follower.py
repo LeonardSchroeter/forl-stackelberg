@@ -3,14 +3,14 @@ from gymnasium import spaces
 
 from stable_baselines3 import PPO
 
-from wrappers.follower import FollowerWrapper
+from wrappers.follower import ContextualPolicyWrapper
 from utils.drone_leader_observation import *
 
 import os
 
 
 class SingleAgentFollowerWrapper(gym.Env):
-    def __init__(self, env: FollowerWrapper):
+    def __init__(self, env: ContextualPolicyWrapper):
         self.env = env
 
         self.observation_space = self.env.observation_space("follower")
