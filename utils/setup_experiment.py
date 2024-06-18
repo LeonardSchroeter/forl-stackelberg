@@ -42,11 +42,13 @@ def create_env(config):
             width=config.env_config.width,
             height=config.env_config.height,
             drone_dist=config.env_config.drone_dist,
+            agent_view_size=config.env_config.agent_view_size,
         )
         env = DroneGame(
             env,
             headless=True,
             leader_cont=config.env_config.leader_cont,
+            follower_blind=config.env_config.follower_blind,
         )
         env = (
             DroneGameFollowerInfoSample(env)

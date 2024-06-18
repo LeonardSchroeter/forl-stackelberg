@@ -27,12 +27,13 @@ def build_matrix_game_contextual(config):
 
 def build_drone_game_contextual(config):
     env = DroneGameEnv(
-        width=config.width, height=config.height
+        width=config.width, height=config.height, drone_dist=config.drone_dist, agent_view_size=config.agent_view_size
     )
     env = DroneGame(
         env=env,
         headless=True,
         leader_cont=config.leader_cont,
+        follower_blind=config.follower_blind,
     )
     if isinstance(env.observation_space("leader"), spaces.MultiBinary):
         num_queries = 2 ** env.observation_space("leader").n
@@ -69,7 +70,7 @@ def pretrain_contextual(config, follower_env=None):
     )
 
     follower_model.learn(
-        total_timesteps=300_00,
+        total_timesteps=50_000,
         reset_num_timesteps=False,
         callback=callback_list,
     )

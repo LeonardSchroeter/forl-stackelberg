@@ -106,7 +106,7 @@ class DroneGame(ParallelEnv):
     }
 
     def __init__(
-        self, env: DroneGameEnv, leader_cont: bool = False, headless: bool = False
+        self, env: DroneGameEnv, leader_cont: bool = False, headless: bool = False, follower_blind: bool = False
     ) -> None:
         super().__init__()
 
@@ -124,6 +124,7 @@ class DroneGame(ParallelEnv):
 
         self.leader_cont = leader_cont
         self.drone_life_span = len(self.env.drone_options)
+        self.follower_blind = follower_blind
 
         # leader action: which of prescribed places to place drone
         # follower action: fwd(0), fwd-left(1), fwd-right(2)
@@ -148,7 +149,7 @@ class DroneGame(ParallelEnv):
                 [
                     self.env.height,
                     self.env.width,
-                    *([4] * agent_view_area),
+                    *([] if follower_blind else [4] * agent_view_area),
                     *(leader_obs_space[0].nvec),
                     self.env.height - 4,
                 ]
@@ -156,7 +157,7 @@ class DroneGame(ParallelEnv):
                 else [
                     self.env.height,
                     self.env.width,
-                    *([4] * agent_view_area),
+                    *([] if follower_blind else [4] * agent_view_area),
                     *([2] * self.env.num_divisions),
                     self.action_spaces["leader"].n,
                 ]
@@ -306,17 +307,20 @@ class DroneGame(ParallelEnv):
     def get_follower_observation(self, leader_observation, leader_action):
         topX, topY, botX, botY = self.env.get_view_exts()
 
-        observation = np.zeros((self.env.agent_view_size, self.env.agent_view_size))
-        for i in range(topX, botX):
-            for j in range(topY, botY):
-                i_local, j_local = self.env.relative_coords(i, j)
+        if self.follower_blind:
+            observation = np.array([])
+        else:
+            observation = np.zeros((self.env.agent_view_size, self.env.agent_view_size))
+            for i in range(topX, botX):
+                for j in range(topY, botY):
+                    i_local, j_local = self.env.relative_coords(i, j)
 
-                if not self.env.in_grid(Point2D(i, j)):
-                    observation[i_local, j_local] = 1
-                elif isinstance(self.env.grid.get(i, j), LavaColored):
-                    observation[i_local, j_local] = 2
-                elif isinstance(self.env.grid.get(i, j), Wall):
-                    observation[i_local, j_local] = 3
+                    if not self.env.in_grid(Point2D(i, j)):
+                        observation[i_local, j_local] = 1
+                    elif isinstance(self.env.grid.get(i, j), LavaColored):
+                        observation[i_local, j_local] = 2
+                    elif isinstance(self.env.grid.get(i, j), Wall):
+                        observation[i_local, j_local] = 3
 
         observation = np.insert(observation.flatten(), 0, self.env.agent_pos[1])
         observation = np.insert(observation, 0, self.env.agent_pos[0])
