@@ -14,7 +14,7 @@ def test_leader(config):
     elif config.algo == "rl2":
         env = build_leader_env_rl2(config)
 
-    model, _ = maybe_load_checkpoint_ppo(os.path.join(config.checkpoint_path, "follower"), env)
+    model, _ = maybe_load_checkpoint_ppo(os.path.join(config.checkpoint_path, "leader"), env)
 
     if config.no_initseg:
         env.set_leader_model(model)
