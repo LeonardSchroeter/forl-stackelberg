@@ -70,10 +70,8 @@ def create_head(head_type, num_features, num_actions):
     raise NotImplementedError
 
 
-def main():
+def pretrain_or_inner_outer_rl2(config):
     print("Using device:", DEVICE)
-
-    config = load_config("rl2")
 
     comm = get_comm()
 
@@ -84,16 +82,16 @@ def main():
     policy_net = create_net(
         net_type="policy",
         env=env,
-        architecture=config.model.architecture,
-        num_features=config.model.num_features,
+        architecture=config.algo_config.follower.architecture,
+        num_features=config.algo_config.follower.num_features,
         context_size=0,
     )
 
     value_net = create_net(
         net_type="value",
         env=env,
-        architecture=config.model.architecture,
-        num_features=config.model.num_features,
+        architecture=config.algo_config.follower.architecture,
+        num_features=config.algo_config.follower.num_features,
         context_size=0,
     )
 
@@ -101,14 +99,14 @@ def main():
     value_net = value_net.to(DEVICE)
 
     policy_optimizer = tc.optim.AdamW(
-        get_weight_decay_param_groups(policy_net, config.training.adam_wd),
-        lr=config.training.adam_lr,
-        eps=config.training.adam_eps,
+        get_weight_decay_param_groups(policy_net, config.algo_config.follower.adam_wd),
+        lr=config.algo_config.follower.adam_lr,
+        eps=config.algo_config.follower.adam_eps,
     )
     value_optimizer = tc.optim.AdamW(
-        get_weight_decay_param_groups(value_net, config.training.adam_wd),
-        lr=config.training.adam_lr,
-        eps=config.training.adam_eps,
+        get_weight_decay_param_groups(value_net, config.algo_config.follower.adam_wd),
+        lr=config.algo_config.follower.adam_lr,
+        eps=config.algo_config.follower.adam_eps,
     )
 
     policy_scheduler = None
@@ -187,16 +185,16 @@ def main():
             leader_env, follower_policy_net=policy_net
         )
 
-        training_config = {"n_steps": 128}
+        setattr(config.algo_config.leader, "n_steps", 128)
         leader_model, leader_callback_list = maybe_load_checkpoint_ppo(
             os.path.join(config.checkpoint_path, "leader"),
             leader_env,
-            training_config=training_config,
+            config=config.algo_config.leader,
             save_freq=10,
         )
         env.set_leader_model(leader_model)
     else:
-        if (config.env.name == "drone_game") and (config.drone_game.leader_cont):
+        if config.env == "drone_game" and config.env_config.leader_cont:
             env.set_follower_policy_net(follower_policy_net=policy_net)
         leader_model = None
         leader_callback_list = (None,)
@@ -209,21 +207,21 @@ def main():
         value_optimizer=value_optimizer,
         policy_scheduler=policy_scheduler,
         value_scheduler=value_scheduler,
-        meta_episodes_per_policy_update=config.training.meta_episodes_per_policy_update,
-        meta_episodes_per_learner_batch=config.training.meta_episodes_per_learner_batch,
-        num_meta_episodes=config.env.num_meta_episodes,
-        ppo_opt_epochs=config.training.ppo_opt_epochs,
-        ppo_clip_param=config.training.ppo_clip_param,
-        ppo_ent_coef=config.training.ppo_ent_coef,
-        discount_gamma=config.training.discount_gamma,
-        gae_lambda=config.training.gae_lambda,
-        standardize_advs=bool(config.training.standardize_advs),
-        max_pol_iters=config.training.max_pol_iters,
+        meta_episodes_per_policy_update=config.algo_config.follower.meta_episodes_per_policy_update,
+        meta_episodes_per_learner_batch=config.algo_config.follower.meta_episodes_per_learner_batch,
+        num_meta_episodes=config.algo_config.num_meta_episodes,
+        ppo_opt_epochs=config.algo_config.follower.ppo_opt_epochs,
+        ppo_clip_param=config.algo_config.follower.ppo_clip_param,
+        ppo_ent_coef=config.algo_config.follower.ppo_ent_coef,
+        discount_gamma=config.algo_config.follower.discount_gamma,
+        gae_lambda=config.algo_config.follower.gae_lambda,
+        standardize_advs=bool(config.algo_config.follower.standardize_advs),
+        max_pol_iters=config.algo_config.follower.max_pol_iters,
         pol_iters_so_far=pol_iters_so_far,
         policy_checkpoint_fn=policy_checkpoint_fn,
         value_checkpoint_fn=value_checkpoint_fn,
         comm=comm,
-        log_wandb=config.training.log_wandb,
+        log_wandb=config.log_wandb,
         inner_outer=config.inner_outer,
         leader_callback_list=leader_callback_list,
         leader_model=leader_model,
@@ -231,4 +229,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    config = load_config("rl2")
+    pretrain_or_inner_outer_rl2(config)

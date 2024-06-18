@@ -29,31 +29,31 @@ from utils.checkpoint_util import maybe_load_checkpoint_rl2
 
 
 def create_env(config):
-    if config.env.name == "matrix_game":
+    if config.env == "matrix_game":
         return MatGameFollowerEnv(
             env=IteratedMatrixGame(
                 matrix="prisoners_dilemma",
-                episode_length=config.matrix_game.episode_len,
-                memory=config.matrix_game.memory,
+                episode_length=config.env_config.episode_len,
+                memory=config.env_config.memory,
             )
         )
-    if config.env.name == "drone_game":
+    if config.env == "drone_game":
         env = DroneGameEnv(
-            width=config.drone_game.width,
-            height=config.drone_game.height,
-            drone_dist=config.drone_game.drone_dist,
+            width=config.env_config.width,
+            height=config.env_config.height,
+            drone_dist=config.env_config.drone_dist,
         )
         env = DroneGame(
             env,
-            headless=config.drone_game.headless,
-            leader_cont=config.drone_game.leader_cont,
+            headless=True,
+            leader_cont=config.env_config.leader_cont,
         )
         env = (
             DroneGameFollowerInfoSample(env)
             if config.inner_outer
             else DroneGameFollowerEnv(env)
         )
-        if config.drone_game.leader_cont:
+        if config.env_config.leader_cont:
             env.inject_rand_noise()
         return env
 
@@ -151,8 +151,8 @@ def get_policy_net_for_inference(env, config):
     policy_net = create_net(
         net_type="policy",
         env=env,
-        architecture=config.model.architecture,
-        num_features=config.model.num_features,
+        architecture=config.algo_config.follower.architecture,
+        num_features=config.algo_config.follower.num_features,
         context_size=0,
     )
 

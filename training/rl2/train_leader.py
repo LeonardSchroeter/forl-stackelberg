@@ -18,22 +18,22 @@ def build_leader_env_rl2(config):
 
     policy_net = get_policy_net_for_inference(follower_env, config)
 
-    env = TrialWrapper(follower_env._env, num_episodes=3)
+    env = TrialWrapper(follower_env._env, num_episodes=config.algo_config.num_meta_episodes)
     env = SingleAgentLeaderWrapperMetaRL(env, follower_policy_net=policy_net)
 
     return env
 
-def train(config):
+def train_leader_rl2(config):
 
-    run = wandb.init(project="stackelberg-rl2-leader", sync_tensorboard=True, monitor_gym=True)
+    wandb.init(project="stackelberg-rl2-leader", sync_tensorboard=True, monitor_gym=True)
 
     env = build_leader_env_rl2(config)
 
     model, callback_list = maybe_load_checkpoint_ppo(
         os.path.join(config.checkpoint_path, "leader"),
         env,
-        config.training.log_wandb,
-        run_id=run.id,
+        config.log_wandb,
+        config.algo_config.leader,
     )
 
     total_timesteps = 1000_0000
@@ -45,7 +45,5 @@ def train(config):
     )
 
 if __name__ == "__main__":
-
     config = load_config("rl2")
-
-    train(config)
+    train_leader_rl2(config)

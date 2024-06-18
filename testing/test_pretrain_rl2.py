@@ -12,14 +12,12 @@ class LeaderModelContTest:
         # return [random.choice((0.48,0.52))]
         return [0.9]
 
-def test_pretrain():
+def test_pretrain_rl2(config):
     
-    config = load_config("rl2")
-    
-    if config.env.name == "matrix_game":
+    if config.env == "matrix_game":
         evaluate(config, verbose=True, leader_policy=[1, 0, 0, 1, 1])
-    elif config.env.name == "drone_game":
-        if config.drone_game.leader_cont:
+    elif config.env == "drone_game":
+        if config.env_config.leader_cont:
             leader_policy = LeaderModelContTest()
         else:
             leader_policy=[0 for _ in range(2**4)]
@@ -35,4 +33,5 @@ def test_pretrain():
 
 
 if __name__ == "__main__":
-    test_pretrain()
+    config = load_config("rl2")
+    test_pretrain_rl2(config)

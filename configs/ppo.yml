@@ -1,37 +1,25 @@
-# Note: current code only allows config.yml with 2 layers
-# And cannot add config parameters with same names but under different parents
-algo: "ppo"
-game: "drone_game"
 no_initseg: False
 inner_outer: False
 leader_test_env: False
-checkpoint_path: "checkpoints/drone_game/ppo"
+checkpoint_path: "drone_game_contextual"
+log_wandb: False
 
-env:
-  name: "drone_game"
-
-model:
-  architecture: "gru"
-  num_features: 256
-
-training:
-  algo_name: "ppo"
-  pretrain_start_lr: 1.0e-3
-  pretrain_end_lr: 1.0e-5
-  pretrain_gamma: 0.95
-  pretrain_ent_coef: 0.0
-  pretrain_batch_size: 180
-  pretrain_n_steps: 180
-  log_wandb: True
-
-matrix_game:
-  memory: 2
-  episode_len: 10
-
-drone_game:
+env: "drone_game"
+env_config:
   width: 12
   height: 12
   drone_dist: 5
   leader_cont: True
-  headless: True # Only for training, testing is always not headless
   video_name: "size6_context_drone0.avi"
+
+algo: "ppo"
+algo_config:
+  follower:
+    use_lr_scheduler: True
+    start_lr: 1.0e-3
+    end_lr: 1.0e-5
+    gamma: 0.95
+    ent_coef: 0.0
+    batch_size: 180
+    n_steps: 180
+  leader:

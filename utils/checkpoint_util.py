@@ -3,6 +3,7 @@ Utility module for saving and loading checkpoints.
 """
 
 import os
+import copy
 
 import torch as tc
 
@@ -56,7 +57,7 @@ def save_checkpoint_rl2(steps, checkpoint_dir, model_name, model, optimizer, sch
     Returns:
         None
     """
-    base_path = os.path.join(checkpoint_dir, model_name)
+    base_path = os.path.join("checkpoints", checkpoint_dir, model_name)
     os.makedirs(base_path, exist_ok=True)
 
     model_path = os.path.join(base_path, _format_name("model", steps))
@@ -95,7 +96,7 @@ def maybe_load_checkpoint_rl2(
     Returns:
         number of env steps experienced by loaded checkpoint.
     """
-    base_path = os.path.join(checkpoint_dir, model_name)
+    base_path = os.path.join("checkpoints", checkpoint_dir, model_name)
     try:
         if steps is None:
             steps = _latest_step(base_path)
@@ -121,8 +122,18 @@ def maybe_load_checkpoint_rl2(
 
 
 def maybe_load_checkpoint_ppo(
-    checkpoint_path, env, log_wandb=False, training_config={}, run_id=0, save_freq=1000
+    path, env, log_wandb=False, _config={}, save_freq=1000
 ):
+    checkpoint_path = os.path.join("checkpoints", path)
+    config = copy.copy(_config)
+    if hasattr(config, "use_lr_scheduler") and config.use_lr_scheduler:
+        start_lr = config.start_lr
+        end_lr = config.end_lr
+        setattr(config, "learning_rate", lambda progress: start_lr * progress + end_lr * (1 - progress))
+        delattr(config, "use_lr_scheduler")
+        delattr(config, "start_lr")
+        delattr(config, "end_lr")
+
     if not os.path.exists(checkpoint_path):
         os.makedirs(checkpoint_path)
 
@@ -157,8 +168,8 @@ def maybe_load_checkpoint_ppo(
             "MlpPolicy",
             env,
             verbose=1,
-            tensorboard_log=f"runs/{run_id}",
-            **training_config,
+            tensorboard_log=os.path.join("runs", path),
+            **config.__dict__,
         )
     return model, CallbackList(callback_list)
 

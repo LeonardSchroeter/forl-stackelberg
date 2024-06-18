@@ -8,10 +8,10 @@ from utils.constants import DEVICE
 def evaluate(config, policy_net=None, leader_policy=None, verbose=False):
     # create env.
     env = create_env(config=config)
-    if config.env.name == "drone_game":
+    if config.env == "drone_game":
         # env.rand_noise = False
         env._env.headless = False
-        if (not config.drone_game.leader_cont):
+        if not config.env_config.leader_cont:
             assert (
                 len(leader_policy) == 2**env._env.env.num_divisions
             ), "Leader policy size is not correct."
@@ -62,22 +62,22 @@ def evaluate(config, policy_net=None, leader_policy=None, verbose=False):
 
             if done:
                 current_episode += 1
-                if current_episode >= config.env.num_meta_episodes:
+                if current_episode >= config.algo_config.num_meta_episodes:
                     break
 
-        if config.env.name == "drone_game":
+        if config.env == "drone_game":
             env._env.close(video_name="size6_rnn.avi")
 
         return np.sum(rewards)
 
     if leader_policy is not None:
-        return evaluate_policy(leader_policy, leader_cont=config.drone_game.leader_cont)
+        return evaluate_policy(leader_policy, leader_cont=config.env_config.leader_cont)
     else:
         rewards = []
         for i in range(32):
             reward = evaluate_policy(
                 [int(x) for x in np.binary_repr(i, width=5)][::-1],
-                leader_cont=config.drone_game.leader_cont,
+                leader_cont=config.env_config.leader_cont,
             )
             rewards.append(reward)
         return np.mean(rewards)

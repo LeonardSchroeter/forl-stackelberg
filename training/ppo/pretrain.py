@@ -15,33 +15,38 @@ from utils.checkpoint_util import maybe_load_checkpoint_ppo
 from utils.config_util import load_config
 
 
-def build_follower_env(config, inner_outer=False):
-    if config.env.name == "matrix_game":
-        follower_env = ContextualPolicyWrapper(
-            IteratedMatrixGame(
-                matrix="prisoners_dilemma",
-                episode_length=config.matrix_game.episode_len,
-                memory=config.matrix_game.memory,
-            ),
-            num_queries=5,
-        )
-    elif config.env.name == "drone_game":
-        env = DroneGameEnv(
-            width=config.drone_game.width, height=config.drone_game.height
-        )
-        env = DroneGame(
-            env=env,
-            headless=config.drone_game.headless,
-            leader_cont=config.drone_game.leader_cont,
-        )
-        if isinstance(env.observation_space("leader"), spaces.MultiBinary):
-            num_queries = 2 ** env.observation_space("leader").n
-        elif isinstance(env.observation_space("leader"), spaces.MultiDiscrete):
-            num_queries = np.prod(env.observation_space("leader").nvec)
-        follower_env = ContextualPolicyWrapper(
-            env=env, num_queries=num_queries
-        )
-    if inner_outer:
+def build_matrix_game_contextual(config):
+    return ContextualPolicyWrapper(
+        IteratedMatrixGame(
+            matrix="prisoners_dilemma",
+            episode_length=config.episode_len,
+            memory=config.memory,
+        ),
+        num_queries=5,
+    )
+
+def build_drone_game_contextual(config):
+    env = DroneGameEnv(
+        width=config.width, height=config.height
+    )
+    env = DroneGame(
+        env=env,
+        headless=True,
+        leader_cont=config.leader_cont,
+    )
+    if isinstance(env.observation_space("leader"), spaces.MultiBinary):
+        num_queries = 2 ** env.observation_space("leader").n
+    elif isinstance(env.observation_space("leader"), spaces.MultiDiscrete):
+        num_queries = np.prod(env.observation_space("leader").nvec)
+    return ContextualPolicyWrapper(env=env, num_queries=num_queries)
+
+def build_follower_env_contextual(config):
+    if config.env == "matrix_game":
+        follower_env = build_matrix_game_contextual(config.env_config)
+    elif config.env == "drone_game":
+        follower_env = build_drone_game_contextual(config.env_config)
+
+    if config.inner_outer:
         follower_env = FollowerWrapperInfoSample(follower_env)
     else:
         follower_env = SingleAgentFollowerWrapper(follower_env)
@@ -49,19 +54,18 @@ def build_follower_env(config, inner_outer=False):
     return follower_env
 
 
-def pretrain(config, pretrain_config, follower_env=None):
+def pretrain_contextual(config, follower_env=None):
     if follower_env is None:
-        follower_env = build_follower_env(config)
+        follower_env = build_follower_env_contextual(config)
 
-    if config.training.log_wandb:
-        run = wandb.init(project="stackelberg-ppo-follower", sync_tensorboard=True)
+    if config.log_wandb:
+        wandb.init(project="stackelberg-ppo-follower", sync_tensorboard=True)
 
     follower_model, callback_list = maybe_load_checkpoint_ppo(
         os.path.join(config.checkpoint_path, "follower"),
         follower_env,
-        config.training.log_wandb,
-        pretrain_config,
-        run.id,
+        config.log_wandb,
+        config.algo_config.follower,
     )
 
     follower_model.learn(
@@ -74,16 +78,5 @@ def pretrain(config, pretrain_config, follower_env=None):
 
 
 if __name__ == "__main__":
-    config = config = load_config("ppo")
-
-    pretrain_config = {
-        "learning_rate": lambda progress: config.training.pretrain_start_lr
-        * (1 - progress)
-        + config.training.pretrain_end_lr * progress,
-        "gamma": config.training.pretrain_gamma,
-        "ent_coef": config.training.pretrain_ent_coef,
-        "batch_size": config.training.pretrain_batch_size,
-        "n_steps": config.training.pretrain_n_steps,
-    }
-
-    pretrain(config, pretrain_config)
+    config = load_config("ppo")
+    pretrain_contextual(config)

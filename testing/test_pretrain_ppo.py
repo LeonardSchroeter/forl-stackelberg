@@ -1,22 +1,22 @@
 import numpy as np
 
-from training.ppo.pretrain import build_follower_env
+from training.ppo.pretrain import build_follower_env_contextual
 from utils.checkpoint_util import maybe_load_checkpoint_ppo
 from utils.config_util import load_config
 
 
-def test_pretrain(config):
-    env = build_follower_env(config)
+def test_pretrain_contextual(config):
+    env = build_follower_env_contextual(config)
 
     model, _ = maybe_load_checkpoint_ppo(config.checkpoint_path, env)
 
-    if config.env.name == "matrix_game":
+    if config.env == "matrix_game":
         for response in [[1, 1, 1, 1, 1], [0, 0, 0, 0, 0], [0, 0, 0, 1, 1]]:
             for s in range(5):
                 obs = [s, *response]
                 action = model.predict(obs, deterministic=True)[0]
                 print(f"state: {s}, context: {response}, action: {action}")
-    elif config.env.name == "drone_game":
+    elif config.env == "drone_game":
         env.plant.headless = False
         # leader_response = np.full((2**10,), 9, dtype=int)
         leader_response = np.full((11**4,), 0, dtype=float)
@@ -36,16 +36,9 @@ def test_pretrain(config):
             if terminated or truncated:
                 break
 
-        env.plant.close(video_name=config.drone_game.video_name)
+        env.plant.close(video_name=config.env_config.video_name)
 
 
 if __name__ == "__main__":
     config = load_config("rl2")
-
-    if config.inner_outer:
-        folder = "inner_outer"
-    elif config.env.name == "drone_game" and config.drone_game.leader_cont:
-        folder = "leader_cont"
-    else:
-        folder = ""
-    test_pretrain(config)
+    test_pretrain_contextual(config)

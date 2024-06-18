@@ -2,13 +2,13 @@ from stable_baselines3.common.evaluation import evaluate_policy
 from ray import tune
 
 from utils.config_util import load_config
-from training.ppo.pretrain import pretrain, build_follower_env
+from training.ppo.pretrain import pretrain_contextual, build_follower_env_contextual
 
 config = load_config("ppo")
 
 def objective(pretrain_config):
-    follower_env = build_follower_env(config)
-    follower_model = pretrain(config, pretrain_config, follower_env)
+    follower_env = build_follower_env_contextual(config)
+    follower_model = pretrain_contextual(config, pretrain_config, follower_env)
 
     mean, std = evaluate_policy(
         follower_model,

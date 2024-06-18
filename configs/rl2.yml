@@ -1,42 +1,33 @@
-# Note: current code only allows config.yml with 2 layers
-algo: "rl2"
-game: "drone_game"
 no_initseg: False
 inner_outer: False
 leader_test_env: False
-checkpoint_path: "checkpoints/drone_game/rl2"
+checkpoint_path: "drone_game_rl2"
+log_wandb: False
 
-env:
-  name: "drone_game"
-  num_meta_episodes: 3
-
-model:
-  architecture: "gru"
-  num_features: 256
-
-training:
-  algo_name: "rl2"
-  max_pol_iters: 12000
-  meta_episodes_per_policy_update: 3
-  meta_episodes_per_learner_batch: 60
-  ppo_opt_epochs: 8
-  ppo_clip_param: 0.10
-  ppo_ent_coef: 0.01
-  discount_gamma: 0.99
-  gae_lambda: 0.3
-  standardize_advs: 0
-  adam_lr: 2.0e-4
-  adam_eps: 1.0e-5
-  adam_wd: 0.01
-  log_wandb: True
-
-matrix_game:
-  memory: 2
-  episode_len: 10
-
-drone_game:
+env: "drone_game"
+env_config:
   width: 22
   height: 22
   drone_dist: 5
   leader_cont: True
-  headless: True # Only for training, testing is always not headless
+  video_name: "size6_context_drone0.avi"
+
+algo: "rl2"
+algo_config:
+  num_meta_episodes: 3
+  follower:
+    architecture: "gru"
+    num_features: 256
+    max_pol_iters: 12000
+    meta_episodes_per_policy_update: 3
+    meta_episodes_per_learner_batch: 60
+    ppo_opt_epochs: 8
+    ppo_clip_param: 0.10
+    ppo_ent_coef: 0.01
+    discount_gamma: 0.99
+    gae_lambda: 0.3
+    standardize_advs: 0
+    adam_lr: 2.0e-4
+    adam_eps: 1.0e-5
+    adam_wd: 0.01
+  leader:

@@ -5,19 +5,18 @@ import wandb
 from utils.checkpoint_util import maybe_load_checkpoint_ppo
 from utils.config_util import load_config
 
-from training.ppo.pretrain import build_follower_env
+from training.ppo.pretrain import build_follower_env_contextual
 from training.ppo.train_leader import build_leader_env_ppo
 
 
-def maybe_load_model(config, follower_training_config, run_id=0):
-    follower_env = build_follower_env(config, inner_outer=True)
+def maybe_load_model(config):
+    follower_env = build_follower_env_contextual(config)
 
     follower_model, follower_callback_list = maybe_load_checkpoint_ppo(
         os.path.join(config.checkpoint_path, "follower"),
         follower_env,
-        config.training.log_wandb & (run_id != 0),
-        follower_training_config,
-        run_id,
+        config.log_wandb,
+        config.algo_config.follower,
     )
 
     leader_env = build_leader_env_ppo(
@@ -28,7 +27,7 @@ def maybe_load_model(config, follower_training_config, run_id=0):
         os.path.join(config.checkpoint_path, "leader"),
         leader_env,
         log_wandb=False,
-        run_id=run_id,
+        config=config.algo_config.leader,
     )
 
     return (
@@ -41,10 +40,10 @@ def maybe_load_model(config, follower_training_config, run_id=0):
     )
 
 
-def train(config, follower_training_config):
+def train_inner_outer_contextual(config):
     
-    if config.training.log_wandb:
-        run = wandb.init(project="stackelberg-ppo-inner-outer", sync_tensorboard=True)
+    if config.log_wandb:
+        wandb.init(project="stackelberg-ppo-inner-outer", sync_tensorboard=True)
     
     (
         follower_env,
@@ -53,7 +52,7 @@ def train(config, follower_training_config):
         leader_model,
         follower_callback_list,
         leader_callback_list,
-    ) = maybe_load_model(config, follower_training_config, run.id)
+    ) = maybe_load_model(config)
 
     leader_env.set_follower_model(follower_model)
     follower_env.set_leader_model(leader_model)
@@ -75,14 +74,4 @@ def train(config, follower_training_config):
 
 if __name__ == "__main__":
     config = load_config("ppo")
-    follower_training_config = {
-        "learning_rate": lambda progress: config.training.pretrain_start_lr
-        * (1 - progress)
-        + config.training.pretrain_end_lr * progress,
-        "gamma": config.training.pretrain_gamma,
-        "ent_coef": config.training.pretrain_ent_coef,
-        "batch_size": config.training.pretrain_batch_size,
-        "n_steps": config.training.pretrain_n_steps,
-    }
-
-    train(config, follower_training_config)
+    train_inner_outer_contextual(config)
