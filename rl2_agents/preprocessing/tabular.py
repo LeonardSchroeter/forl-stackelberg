@@ -58,6 +58,7 @@ class DGFPreprocessing(Preprocessing):
         num_actions: int,
         env_height: int,
         leader_cont: bool,
+        follower_blind: bool,
     ):
         super().__init__()
         self._num_states = num_states
@@ -65,13 +66,14 @@ class DGFPreprocessing(Preprocessing):
         self._num_actions = num_actions
         self._env_height = env_height
         self._leader_cont = leader_cont
+        self._follower_blind = follower_blind
 
     @property
     def output_dim(self):
         if self._leader_cont:
             return (
                 self._dim_states[0]  # follower x, y
-                + self._dim_states[1] * self._num_states[2]  # follower local view occupancy
+                + (self._dim_states[1] * self._num_states[2] if not self._follower_blind else 0)  # follower local view occupancy
                 + self._dim_states[2]  # leader obs
                 + self._dim_states[3]  # leader action
                 + self._num_actions  # follower previous action
@@ -80,7 +82,7 @@ class DGFPreprocessing(Preprocessing):
         else:
             return (
                 self._dim_states[0]  # follower x, y
-                + self._dim_states[1] * self._num_states[2]  # follower local view occupancy
+                + (self._dim_states[1] * self._num_states[2] if not self._follower_blind else 0)  # follower local view occupancy
                 + self._dim_states[2]  # leader obs
                 + self._dim_states[3] * self._num_states[-1]  # leader action
                 + self._num_actions  # follower previous action
@@ -102,10 +104,11 @@ class DGFPreprocessing(Preprocessing):
         ).to(DEVICE)
 
         emb_occps = []
-        for k in range(self._dim_states[1]):
-            emb_occps.append(
-                one_hot(tc.atleast_1d(occps[..., k]), depth=self._num_states[2])
-            )
+        if not self._follower_blind:
+            for k in range(self._dim_states[1]):
+                emb_occps.append(
+                    one_hot(tc.atleast_1d(occps[..., k]), depth=self._num_states[2])
+                )
 
         ol = tc.LongTensor(
             curr_obs[

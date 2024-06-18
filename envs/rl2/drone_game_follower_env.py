@@ -69,7 +69,7 @@ class DroneGameFollowerEnv(MetaEpisodicEnv):
     def dim_states(self):
         dim_states = [
             2,
-            self._env.env.agent_view_size * self._env.env.agent_view_size,
+            (self._env.env.agent_view_size * self._env.env.agent_view_size if not self._env.follower_blind else 0),
             2 * self._env.drone_life_span
             if self.leader_cont
             else self._env.env.num_divisions,

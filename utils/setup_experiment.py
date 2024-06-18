@@ -72,6 +72,7 @@ def create_preprocessing(env):
             num_actions=env.num_actions,
             env_height=env._env.env.height,
             leader_cont=env.leader_cont,
+            follower_blind=env._env.follower_blind,
         )
     raise NotImplementedError
 
