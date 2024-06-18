@@ -122,16 +122,21 @@ def maybe_load_checkpoint_rl2(
 
 
 def maybe_load_checkpoint_ppo(
-    path, env, log_wandb=False, _config={}, save_freq=1000
+    path, env, log_wandb=False, _config=None, save_freq=1000
 ):
     checkpoint_path = os.path.join("checkpoints", path)
     config = copy.copy(_config)
+
     if hasattr(config, "use_lr_scheduler") and config.use_lr_scheduler:
         start_lr = config.start_lr
         end_lr = config.end_lr
         setattr(config, "learning_rate", lambda progress: start_lr * progress + end_lr * (1 - progress))
+
+    if hasattr(config, "use_lr_scheduler"):
         delattr(config, "use_lr_scheduler")
+    if hasattr(config, "start_lr"):
         delattr(config, "start_lr")
+    if hasattr(config, "end_lr"):
         delattr(config, "end_lr")
 
     if not os.path.exists(checkpoint_path):

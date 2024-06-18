@@ -1,3 +1,5 @@
+import os
+
 from utils.drone_leader_observation import decimal_to_binary
 from utils.checkpoint_util import maybe_load_checkpoint_ppo
 from utils.config_util import load_config
@@ -12,7 +14,7 @@ def test_leader(config):
     elif config.algo == "rl2":
         env = build_leader_env_rl2(config)
 
-    model, _ = maybe_load_checkpoint_ppo(config.checkpoint_path, env)
+    model, _ = maybe_load_checkpoint_ppo(os.path.join(config.checkpoint_path, "follower"), env)
 
     if config.no_initseg:
         env.set_leader_model(model)

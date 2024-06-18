@@ -18,6 +18,8 @@ def dict_to_namespace(d):
         if isinstance(value, dict):
             # Recursively convert the nested dictionary
             setattr(namespace, key, dict_to_namespace(value))
+        elif value is None:
+            setattr(namespace, key, argparse.Namespace())
         else:
             setattr(namespace, key, value)
     return namespace

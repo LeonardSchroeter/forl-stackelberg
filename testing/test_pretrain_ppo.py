@@ -1,3 +1,4 @@
+import os
 import numpy as np
 
 from training.ppo.pretrain import build_follower_env_contextual
@@ -8,7 +9,7 @@ from utils.config_util import load_config
 def test_pretrain_contextual(config):
     env = build_follower_env_contextual(config)
 
-    model, _ = maybe_load_checkpoint_ppo(config.checkpoint_path, env)
+    model, _ = maybe_load_checkpoint_ppo(os.path.join(config.checkpoint_path, "follower"), env)
 
     if config.env == "matrix_game":
         for response in [[1, 1, 1, 1, 1], [0, 0, 0, 0, 0], [0, 0, 0, 1, 1]]:
