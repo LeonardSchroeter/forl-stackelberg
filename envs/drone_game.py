@@ -175,6 +175,7 @@ class DroneGame(ParallelEnv):
         return self.observation_spaces[agent]
 
     def reset(self):
+        self.drones.clear()
         self.follower_captured = False
         self.env.reset()
         leader_obs = []
