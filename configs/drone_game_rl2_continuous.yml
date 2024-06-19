@@ -1,0 +1,35 @@
+no_initseg: False
+inner_outer: False
+leader_test_env: False
+checkpoint_path: "drone_game_rl2_continuous"
+log_wandb: True
+
+env: "drone_game"
+env_config:
+  width: 22
+  height: 22
+  drone_dist: 5
+  agent_view_size: 3
+  leader_cont: True
+  follower_blind: True
+  video_name: "size6_context_drone0.avi"
+
+algo: "rl2"
+algo_config:
+  num_meta_episodes: 3
+  follower:
+    architecture: "gru"
+    num_features: 256
+    max_pol_iters: 12000
+    meta_episodes_per_policy_update: 80
+    meta_episodes_per_learner_batch: 4
+    ppo_opt_epochs: 8
+    ppo_clip_param: 0.10
+    ppo_ent_coef: 0.01
+    discount_gamma: 0.99
+    gae_lambda: 0.3
+    standardize_advs: 0
+    adam_lr: 2.0e-4
+    adam_eps: 1.0e-5
+    adam_wd: 0.01
+  leader:

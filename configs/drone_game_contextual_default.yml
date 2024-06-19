@@ -1,21 +1,23 @@
 no_initseg: False
 inner_outer: False
-leader_test_env: False
-checkpoint_path: "drone_game_contextual"
-log_wandb: False
+leader_test_env: True
+checkpoint_path: "drone_game_contextual_default"
+log_wandb: True
 
 env: "drone_game"
 env_config:
-  width: 12
-  height: 12
+  width: 22
+  height: 22
   drone_dist: 5
-  leader_cont: True
+  agent_view_size: 3
+  leader_cont: False
+  follower_blind: True
   video_name: "size6_context_drone0.avi"
 
 algo: "ppo"
 algo_config:
   follower:
-    use_lr_scheduler: True
+    use_lr_scheduler: False
     start_lr: 1.0e-3
     end_lr: 1.0e-5
     gamma: 0.95

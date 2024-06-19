@@ -1,15 +1,17 @@
 no_initseg: False
 inner_outer: False
-leader_test_env: False
-checkpoint_path: "drone_game_rl2"
-log_wandb: False
+leader_test_env: True
+checkpoint_path: "drone_game_rl2_default"
+log_wandb: True
 
 env: "drone_game"
 env_config:
   width: 22
   height: 22
   drone_dist: 5
-  leader_cont: True
+  agent_view_size: 3
+  leader_cont: False
+  follower_blind: True
   video_name: "size6_context_drone0.avi"
 
 algo: "rl2"
@@ -19,8 +21,8 @@ algo_config:
     architecture: "gru"
     num_features: 256
     max_pol_iters: 12000
-    meta_episodes_per_policy_update: 3
-    meta_episodes_per_learner_batch: 60
+    meta_episodes_per_policy_update: 80
+    meta_episodes_per_learner_batch: 4
     ppo_opt_epochs: 8
     ppo_clip_param: 0.10
     ppo_ent_coef: 0.01
