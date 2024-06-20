@@ -70,7 +70,7 @@ def pretrain_contextual(config, follower_env=None):
     )
 
     follower_model.learn(
-        total_timesteps=300_000,
+        total_timesteps=500_000,
         reset_num_timesteps=False,
         callback=callback_list,
     )
