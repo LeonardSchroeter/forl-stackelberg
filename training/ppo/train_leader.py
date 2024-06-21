@@ -72,7 +72,7 @@ def train_leader_contextual(config):
         leader_env.set_leader_model(leader_model)
 
     leader_model.learn(
-        total_timesteps=500_000,
+        total_timesteps=3_000_000,
         reset_num_timesteps=False,
         callback=callback_list,
     )
